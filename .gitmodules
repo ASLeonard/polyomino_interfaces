@@ -1,0 +1,3 @@
+[submodule "polyomino_core"]
+	path = polyomino_core
+	url = https://github.com/ASLeonard/polyomino_core

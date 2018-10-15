@@ -1,4 +1,8 @@
-from polyomino_visuals import VisualiseSingleShape as VSS
+#import sys
+#sys.path.append('/scripts')
+#sys.path.append('../polyomino_core/scripts')
+
+#from polyomino_visuals import VisualiseSingleShape as VSS
 from interface_analysis import *
 from interface_methods import *
 
