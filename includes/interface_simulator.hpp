@@ -3,7 +3,7 @@
 
 namespace simulation_params
 {
-  uint16_t population_size=100,fitness_period=100;
+  uint16_t fitness_period=100;
   uint32_t generation_limit=100,independent_trials=1,run_offset=0;
   bool random_initilisation=true;
   double mu_prob=1,fitness_jump=2,fitness_rise=10;
@@ -11,17 +11,13 @@ namespace simulation_params
 
 
 struct PopulationGenotype {
-  std::vector<interface_type> genotype;
+  BGenotype genotype;
   Phenotype_ID pid;
   PopulationGenotype(void) : genotype(simulation_params::n_tiles*4), pid{1,0} {};
 };
 
-void ReducedModelTable(interface_model::InterfacePhenotypeTable* pt);
-
-//void RandomStrings();
-
-/* Fitness selection */
-std::vector<uint16_t> RouletteWheelSelection(std::vector<double>& fitnesses);
+void ReducedModelTable(FitnessPhenotypeTable* pt);
+void FinalModelTable(FitnessPhenotypeTable* pt);
 
 /* Main evolution runners */
 void EvolvePopulation(std::string run_details); 
@@ -29,11 +25,10 @@ void EvolutionRunner();
 void SetRuntimeConfigurations(int argc, char* argv[]);
 
 BGenotype GenerateTargetGraph(std::map<uint8_t,std::vector<uint8_t>> edge_map,uint8_t graph_size);
-void SampleSupport();
-void SampleMutual();
+
 
 struct DynamicFitnessLandscape {
-  DynamicFitnessLandscape(interface_model::InterfacePhenotypeTable* pt_in,uint16_t period, uint16_t rise) : pt_iter(pt_in),period(period) {
+  DynamicFitnessLandscape(FitnessPhenotypeTable* pt_in,uint16_t period, uint16_t rise) : pt_iter(pt_in),period(period) {
     sharpness=rise/std::log(20);
   }
   void operator()(uint32_t generation) {
@@ -45,7 +40,7 @@ struct DynamicFitnessLandscape {
 
 private:
   std::array<uint8_t,2> pid_cyc{12,10};
-  interface_model::InterfacePhenotypeTable* pt_iter;
+  FitnessPhenotypeTable* pt_iter;
   uint16_t period;
   double sharpness;
 };

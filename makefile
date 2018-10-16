@@ -19,9 +19,9 @@ OBJEXT      := o
 #VPATH=src:polyomino/src
 
 #Flags, Libraries and Includes
-CXXFLAGS    := -std=gnu++17 -Wall -Wextra -pedantic  -pipe -march=haswell -flto -flto-partition=none -no-pie -ffunction-sections -fdata-sections $(cmdflag)
+CXXFLAGS    := -std=gnu++17 -Wall -Wextra -pedantic -Ipolyomino_core/includes -pipe -march=haswell -flto -flto-partition=none -no-pie -ffunction-sections -fdata-sections $(cmdflag)
 ifndef DEBUG
-CXXFLAGS += -O3 -fopenmp -Iincludes -Ipolyomino_core/includes
+CXXFLAGS += -O3 -fopenmp
 else
 CXXFLAGS += -p -g -ggdb
 endif
@@ -37,9 +37,6 @@ PE_SOURCES := $(shell find $(SRCDIR) -type f -name interface_*.$(SRCEXT))
 
 PE_OBJECTS     := $(patsubst $(SRCDIR)/%,$(BUILDDIR)/%,$(PE_SOURCES:.$(SRCEXT)=.$(OBJEXT)))
 CORE_OBJECTS     := $(patsubst $(LIBDIR)/$(SRCDIR)/%,$(BUILDDIR)/%,$(CORE_SOURCES:.$(SRCEXT)=.$(OBJEXT)))
-
-
-
 
 #Default Make
 all: Pe 

@@ -1,8 +1,16 @@
 #include "interface_simulator.hpp"
+#include <iostream>
+
+
 bool KILL_BACK_MUTATIONS=false;
 const std::string file_base_path="//scratch//asl47//Data_Runs//Bulk_Data//";
 auto interface_filler = std::bind(std::uniform_int_distribution<interface_type>(), std::ref(RNG_Engine));
 const std::map<Phenotype_ID,uint8_t> phen_stages{{{0,0},0},{{1,0},1},{{2,0},2},{{4,0},2},{{4,1},3},{{8,0},3},{{12,0},4},{{16,0},4}};
+
+namespace simulation_params {
+  uint16_t population_size=100;
+  double fitness_factor=1;
+}
 
 void EvolutionRunner() {
   const uint16_t N_runs=simulation_params::independent_trials;
@@ -10,7 +18,7 @@ void EvolutionRunner() {
   for(uint16_t r=0;r < N_runs;++r) 
     EvolvePopulation("_Run"+std::to_string(r+simulation_params::run_offset));
 }
-void ReducedModelTable(interface_model::InterfacePhenotypeTable* pt) {
+void ReducedModelTable(FitnessPhenotypeTable* pt) {
   model_params::FIXED_TABLE=true;
   KILL_BACK_MUTATIONS=true;
   pt->known_phenotypes[1].emplace_back(Phenotype{1,1, {1}});
@@ -31,7 +39,7 @@ void ReducedModelTable(interface_model::InterfacePhenotypeTable* pt) {
   pt->phenotype_fitnesses[16].emplace_back(std::pow(base_multiplier,3));
 }
 
-void FinalModelTable(interface_model::InterfacePhenotypeTable* pt) {
+void FinalModelTable(FitnessPhenotypeTable* pt) {
   model_params::FIXED_TABLE=true;
   pt->known_phenotypes[4].emplace_back(Phenotype{2,2, {1, 2, 4, 3}});
   pt->known_phenotypes[12].emplace_back(Phenotype{4,4, {0, 1, 2, 0, 1, 5, 6, 2, 4, 8, 7, 3, 0, 4, 3, 0}});
@@ -56,7 +64,7 @@ void EvolvePopulation(std::string run_details) {
   std::vector<PopulationGenotype> evolving_population(simulation_params::population_size),reproduced_population(simulation_params::population_size);
   GenotypeMutator mutator(simulation_params::mu_prob/(model_params::interface_size*4*simulation_params::n_tiles));
   
-  interface_model::InterfacePhenotypeTable pt = interface_model::InterfacePhenotypeTable();
+  FitnessPhenotypeTable pt = FitnessPhenotypeTable();
   DynamicFitnessLandscape dfl(&pt,simulation_params::fitness_period,simulation_params::fitness_rise);
   switch(simulation_params::model_type) {
   case 2: FinalModelTable(&pt);
@@ -128,15 +136,7 @@ void EvolvePopulation(std::string run_details) {
   pt.PrintTable(fout_phenotype); 
 }
 
-std::vector<uint16_t> RouletteWheelSelection(std::vector<double>& fitnesses) {
-  std::partial_sum(fitnesses.begin(), fitnesses.end(), fitnesses.begin());
-  std::vector<uint16_t> selected_indices(simulation_params::population_size);
-  std::uniform_real_distribution<double> random_interval(0,fitnesses.back());
-  for(uint16_t nth_selection=0; nth_selection<simulation_params::population_size; ++nth_selection) 
-    selected_indices[nth_selection]=static_cast<uint16_t>(std::lower_bound(fitnesses.begin(),fitnesses.end(),random_interval(RNG_Engine))-fitnesses.begin());
-  std::sort(selected_indices.begin(),selected_indices.end());
-  return selected_indices;
-}
+
 
 /********************/
 /*******!MAIN!*******/
