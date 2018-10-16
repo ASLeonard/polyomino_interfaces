@@ -1,0 +1,21 @@
+# Ignore the build and lib dirs
+build/*
+
+# Ignore any executables
+bin/*
+
+#
+Ignore any pyc from imports
+__pycache__
+scripts/*.pyc
+scripts/*.so
+scripts/*.sh
+
+scripts/*.pdf
+
+# Ignore Mac specific files
+.DS_Store
+
+\#*\#
+.\#*
+*txt
