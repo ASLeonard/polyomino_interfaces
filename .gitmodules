@@ -1,4 +1,4 @@
 [submodule "polyomino_core"]
 	path = polyomino_core
-	url = https://github.com/ASLeonard/polyomino_core
+	url =  ssh://github.com/ASLeonard/polyomino_core
 	branch = master

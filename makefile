@@ -1,3 +1,5 @@
+MAKEFLAGS+="-j $(nproc)"
+
 #Compiler and Linker
 CXX         := g++
 
@@ -19,15 +21,15 @@ OBJEXT      := o
 #VPATH=src:polyomino/src
 
 #Flags, Libraries and Includes
-CXXFLAGS    := -std=gnu++17 -Wall -Wextra -pedantic -Ipolyomino_core/includes -pipe -march=haswell -flto -flto-partition=none -no-pie -ffunction-sections -fdata-sections $(cmdflag)
+CXXFLAGS    := -std=gnu++17 -Wall -Wextra -pedantic -pipe -march=haswell -flto -flto-partition=none -no-pie -ffunction-sections -fdata-sections $(cmdflag)
 ifndef DEBUG
 CXXFLAGS += -O3 -fopenmp
 else
-CXXFLAGS += -p -g -ggdb
+CXXFLAGS += -pg
 endif
 
-INC         := -I$(INCDIR)
-INCDEP      := -I$(INCDIR)
+INC         := -I$(INCDIR) -I$(LIBDIR)/$(INCDIR)
+INCDEP      := -I$(INCDIR) -I$(LIBDIR)/$(INCDIR)
 
 #---------------------------------------------------------------------------------
 #DO NOT EDIT BELOW THIS LINE

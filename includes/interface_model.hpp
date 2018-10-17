@@ -1,12 +1,16 @@
-#include "core_evolution.hpp"
-#include "core_assembly.hpp"
-#include "core_genotype.hpp"
-
-
-#include <functional>
+#pragma once
+#include <cstdint>
 #include <climits>
 
+
 using interface_type = uint64_t;
+
+bool InteractionMatrix(const interface_type face_1,const interface_type face_2);
+double BindingStrength(const interface_type face_1,const interface_type face_2);
+
+#include "core_assembly.hpp"
+#include "core_evolution.hpp"
+
 using BGenotype = std::vector<interface_type>;
 
 namespace model_params
@@ -25,12 +29,6 @@ namespace simulation_params
   extern double temperature,binding_threshold;
 }
 
-std::array<double,model_params::interface_size+1> GenBindingProbsLUP();
-
-bool InteractionMatrix(const interface_type face_1,const interface_type face_2);
-double BindingStrength(const interface_type face_1,const interface_type face_2);
-
-
 namespace interface_model
 {   
   interface_type ReverseBits(interface_type v);
@@ -40,3 +38,25 @@ namespace interface_model
   double PolyominoAssemblyOutcome(BGenotype& binary_genome, FitnessPhenotypeTable* pt,Phenotype_ID& pid,std::set<interaction_pair>& pid_interactions);
   
 }
+void RandomiseGenotype(BGenotype& genotype);
+
+struct GenotypeMutator { 
+  GenotypeMutator(double mu) : interface_indices(model_params::interface_size),b_dist(model_params::interface_size,mu) {std::iota(interface_indices.begin(),interface_indices.end(),0);}
+  void operator()(BGenotype& binary_genotype) {
+    for(interface_type& base : binary_genotype) {
+      std::shuffle(interface_indices.begin(), interface_indices.end(), RNG_Engine);
+      const uint8_t num_mutations=b_dist(RNG_Engine);
+      for(uint8_t nth=0;nth<num_mutations;++nth) 
+        base ^= (interface_type(1) << interface_indices[nth]);
+    }
+  }
+      
+private:
+  std::vector<uint8_t> interface_indices;
+  std::binomial_distribution<uint8_t> b_dist;
+};
+extern thread_local GenotypeMutator mutator;
+
+BGenotype GenerateTargetGraph(std::map<uint8_t,std::vector<uint8_t>> edge_map,uint8_t graph_size);
+void EnsureNeutralDisconnections(BGenotype& genotype);
+

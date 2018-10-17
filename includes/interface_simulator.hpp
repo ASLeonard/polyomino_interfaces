@@ -3,6 +3,7 @@
 
 namespace simulation_params
 {
+  extern uint16_t population_size;
   uint16_t fitness_period=100;
   uint32_t generation_limit=100,independent_trials=1,run_offset=0;
   bool random_initilisation=true;
@@ -22,9 +23,11 @@ void FinalModelTable(FitnessPhenotypeTable* pt);
 /* Main evolution runners */
 void EvolvePopulation(std::string run_details); 
 void EvolutionRunner();
+
+//std::vector<uint16_t> RouletteWheelSelection(std::vector<double>& fitnesses);
+
 void SetRuntimeConfigurations(int argc, char* argv[]);
 
-BGenotype GenerateTargetGraph(std::map<uint8_t,std::vector<uint8_t>> edge_map,uint8_t graph_size);
 
 
 struct DynamicFitnessLandscape {
@@ -45,20 +48,4 @@ private:
   double sharpness;
 };
 
-struct GenotypeMutator { 
-  GenotypeMutator(double mu) : interface_indices(model_params::interface_size),b_dist(model_params::interface_size,mu) {std::iota(interface_indices.begin(),interface_indices.end(),0);}
-  void operator()(BGenotype& binary_genotype) {
-    for(interface_type& base : binary_genotype) {
-      std::shuffle(interface_indices.begin(), interface_indices.end(), RNG_Engine);
-      const uint8_t num_mutations=b_dist(RNG_Engine);
-      for(uint8_t nth=0;nth<num_mutations;++nth) 
-        base ^= (interface_type(1) << interface_indices[nth]);
-    }
-  }
-      
-private:
-  std::vector<uint8_t> interface_indices;
-  std::binomial_distribution<uint8_t> b_dist;
-};
- 
-void EnsureNeutralDisconnections(BGenotype& genotype, GenotypeMutator& mutator);
+

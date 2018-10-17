@@ -1,10 +1,8 @@
 #include "interface_simulator.hpp"
 #include <iostream>
 
-
 bool KILL_BACK_MUTATIONS=false;
 const std::string file_base_path="//scratch//asl47//Data_Runs//Bulk_Data//";
-auto interface_filler = std::bind(std::uniform_int_distribution<interface_type>(), std::ref(RNG_Engine));
 const std::map<Phenotype_ID,uint8_t> phen_stages{{{0,0},0},{{1,0},1},{{2,0},2},{{4,0},2},{{4,1},3},{{8,0},3},{{12,0},4},{{16,0},4}};
 
 namespace simulation_params {
@@ -50,28 +48,22 @@ void FinalModelTable(FitnessPhenotypeTable* pt) {
 }
 
 void EvolvePopulation(std::string run_details) {
-  /*! Output files */
-  
   std::string file_simulation_details="Y"+std::to_string(simulation_params::binding_threshold)+"_T"+ std::to_string(simulation_params::temperature) +"_Mu"+std::to_string(simulation_params::mu_prob)+"_Gamma"+std::to_string(simulation_params::fitness_factor)+run_details+".txt";
     
   std::ofstream fout_strength(file_base_path+"Strengths_"+file_simulation_details);
   std::ofstream fout_phenotype(file_base_path+"Phenotypes_"+file_simulation_details);  
-  std::ofstream fout_phenotype_history(file_base_path+"PhenotypeHistory_"+file_simulation_details);
-  
-    
+  std::ofstream fout_phenotype_history(file_base_path+"PhenotypeHistory_"+file_simulation_details);    
     
   std::vector<double> population_fitnesses(simulation_params::population_size);
   std::vector<PopulationGenotype> evolving_population(simulation_params::population_size),reproduced_population(simulation_params::population_size);
-  GenotypeMutator mutator(simulation_params::mu_prob/(model_params::interface_size*4*simulation_params::n_tiles));
   
   FitnessPhenotypeTable pt = FitnessPhenotypeTable();
   DynamicFitnessLandscape dfl(&pt,simulation_params::fitness_period,simulation_params::fitness_rise);
+  
   switch(simulation_params::model_type) {
   case 2: FinalModelTable(&pt);
     {
       const BGenotype ref_genotype=GenerateTargetGraph({{1,{0,7}},{4,{5}}},simulation_params::n_tiles*4);
-      //for(auto  aeg : GetEdgePairs(ref_genotype))
-      //  std::cout<<+aeg.first.first<<","<<+aeg.first.second<<": "<<aeg.second<<std::endl;
       for(auto& species : evolving_population)
         species.genotype=ref_genotype;
     }
@@ -80,9 +72,7 @@ void EvolvePopulation(std::string run_details) {
     __attribute__ ((fallthrough));
   default:
     for(auto& species : evolving_population)
-      do {
-        std::generate(species.genotype.begin(),species.genotype.end(),interface_filler);
-      }while(CountActiveInterfaces(species.genotype)!=0);
+      RandomiseGenotype(species.genotype);
     break;
   }
   
@@ -93,13 +83,13 @@ void EvolvePopulation(std::string run_details) {
   for(uint32_t generation=0;generation<simulation_params::generation_limit;++generation) { /*! MAIN EVOLUTION LOOP */
     if(simulation_params::model_type==2)
       dfl(generation);
-    //std::cout<<pt.phenotype_fitnesses[10][0]<<", "<<pt.phenotype_fitnesses[12][0]<<std::endl;
+
     uint16_t nth_genotype=0;
     for(PopulationGenotype& evolving_genotype : evolving_population) { /*! GENOTYPE LOOP */
       mutator(evolving_genotype.genotype);      
      
       if(simulation_params::model_type==1)
-        EnsureNeutralDisconnections(evolving_genotype.genotype,mutator);         
+        EnsureNeutralDisconnections(evolving_genotype.genotype);         
             
       assembly_genotype=evolving_genotype.genotype;
       prev_ev=evolving_genotype.pid;
@@ -135,7 +125,6 @@ void EvolvePopulation(std::string run_details) {
   
   pt.PrintTable(fout_phenotype); 
 }
-
 
 
 /********************/
@@ -205,62 +194,12 @@ void SetRuntimeConfigurations(int argc, char* argv[]) {
       default: std::cout<<"Unknown Parameter Flag: "<<argv[arg][1]<<std::endl;
       }
     }
+    mutator=GenotypeMutator(simulation_params::mu_prob/(model_params::interface_size*4*simulation_params::n_tiles));
     simulation_params::samming_threshold=static_cast<uint8_t>(model_params::interface_size*(1-simulation_params::binding_threshold));
-    binding_probabilities=GenBindingProbsLUP();
-  }
-}
-
-BGenotype GenerateTargetGraph(std::map<uint8_t,std::vector<uint8_t>> edge_map,uint8_t graph_size) {
-  const uint8_t total_edges=std::accumulate(edge_map.begin(),edge_map.end(),0,[](uint8_t size,const auto & p1) {return size+p1.second.size();});
-  BGenotype graph(graph_size);
+    for(size_t i=0;i<=simulation_params::samming_threshold;++i)
+      binding_probabilities[i]=std::pow(1-double(i)/model_params::interface_size,simulation_params::temperature);
   
-  std::uniform_int_distribution<uint8_t> delta_ser(0,simulation_params::samming_threshold),delta_ser_sym(0,simulation_params::samming_threshold/2);
-  std::vector<uint8_t> bits(model_params::interface_size),bits_sym(model_params::interface_size/2);
-  std::iota(bits.begin(),bits.end(),0);
-  std::iota(bits_sym.begin(),bits_sym.end(),0);
-
-  do {
-    std::generate(graph.begin(),graph.end(),interface_filler); 
-    for(auto edge : edge_map) {
-      graph[edge.first]=interface_filler();
-      for(uint8_t connector : edge.second) {
-        graph[connector]=interface_model::ReverseBits(~graph[edge.first]);
-        if(edge.first==connector)
-          std::shuffle(bits_sym.begin(),bits_sym.end(),RNG_Engine);
-        else
-          std::shuffle(bits.begin(),bits.end(),RNG_Engine);
-        const uint8_t delta_s = (edge.first==connector) ? delta_ser_sym(RNG_Engine) : delta_ser(RNG_Engine);
-        for(uint8_t b=0; b<delta_s;++b)
-          graph[connector] ^=(interface_type(1)<<bits[b]);
-      }
-    }
-  }while(CountActiveInterfaces(graph)!=total_edges);
-  return graph;
-}
-
-
-void EnsureNeutralDisconnections(BGenotype& genotype,GenotypeMutator& mutator) {
-  BGenotype temp(genotype);
-  uint8_t edges = CountActiveInterfaces(temp);
-  if(edges==0)
-    return; //no edges, so no need to swap anything
-  StripNoncodingGenotype(temp);
-  if(temp.size()==genotype.size())
-    return; //not disconnected, no need to swap
-  uint8_t new_edges=CountActiveInterfaces(temp);
-  if(new_edges==0)//disjointed with internal edge on 2nd tile
-    std::swap_ranges(genotype.begin(),genotype.begin()+4,genotype.begin()+4);
-  else {
-    if(new_edges!=edges) { //disjointed with internal edges on both
-      do {
-        std::generate(genotype.begin()+4,genotype.end(),interface_filler);
-      }while(CountActiveInterfaces(genotype)!=new_edges);
-      //established disjointed tile with internal tile on first, neutral 2nd tile
-      do {
-        temp.assign(genotype.begin()+4,genotype.end());
-        mutator(temp);
-      }while(CountActiveInterfaces(temp)!=0); //don't allow new internal edges on 2nd tile, but can allow external edge
-      std::swap_ranges(genotype.begin()+4, genotype.end(), temp.begin());
-    }
   }
 }
+
+

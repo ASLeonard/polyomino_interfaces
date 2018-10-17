@@ -1,7 +1,17 @@
 #include "interface_model.hpp"
+#include <functional>
 
+thread_local std::mt19937 RNG_Engine(341723847);//std::random_device{}());
+thread_local auto interface_filler = std::bind(std::uniform_int_distribution<interface_type>(), std::ref(RNG_Engine));
 //std::normal_distribution<double> normal_dist(0,1);
 std::array<double,model_params::interface_size+1> binding_probabilities;
+thread_local GenotypeMutator mutator(1);
+bool InteractionMatrix(const interface_type face_1,const interface_type face_2) {
+  return interface_model::SammingDistance(face_1,face_2)<=simulation_params::samming_threshold;
+}
+double BindingStrength(const interface_type face_1,const interface_type face_2) {
+  return binding_probabilities[interface_model::SammingDistance(face_1,face_2)];
+}
 
 namespace simulation_params
 {
@@ -80,17 +90,64 @@ namespace interface_model
 
 }//end interface_model namespace
 
-bool InteractionMatrix(const interface_type face_1,const interface_type face_2) {
-  return interface_model::SammingDistance(face_1,face_2)<=simulation_params::samming_threshold;
-}
-double BindingStrength(const interface_type face_1,const interface_type face_2) {
-  return binding_probabilities[interface_model::SammingDistance(face_1,face_2)];
-}
-
-std::array<double,model_params::interface_size+1> GenBindingProbsLUP() {
-  std::array<double,model_params::interface_size+1> probs;
-  for(size_t i=0;i<probs.size();++i)
-    probs[i]=(i<=simulation_params::samming_threshold?1:0) * std::pow(1-double(i)/model_params::interface_size,simulation_params::temperature);
-  return probs;
+void RandomiseGenotype(BGenotype& genotype) {
+  do {
+    std::generate(genotype.begin(),genotype.end(),interface_filler);
+  }while(CountActiveInterfaces(genotype)!=0);
 }
 
+BGenotype GenerateTargetGraph(std::map<uint8_t,std::vector<uint8_t>> edge_map,uint8_t graph_size) {
+  const uint8_t total_edges=std::accumulate(edge_map.begin(),edge_map.end(),0,[](uint8_t size,const auto & p1) {return size+p1.second.size();});
+  BGenotype graph(graph_size);
+  
+  std::uniform_int_distribution<uint8_t> delta_ser(0,simulation_params::samming_threshold),delta_ser_sym(0,simulation_params::samming_threshold/2);
+  std::vector<uint8_t> bits(model_params::interface_size),bits_sym(model_params::interface_size/2);
+  std::iota(bits.begin(),bits.end(),0);
+  std::iota(bits_sym.begin(),bits_sym.end(),0);
+
+  do {
+    RandomiseGenotype(graph);
+    //std::generate(graph.begin(),graph.end(),interface_filler); 
+    for(auto edge : edge_map) {
+      graph[edge.first]=interface_filler();
+      for(uint8_t connector : edge.second) {
+        graph[connector]=interface_model::ReverseBits(~graph[edge.first]);
+        if(edge.first==connector)
+          std::shuffle(bits_sym.begin(),bits_sym.end(),RNG_Engine);
+        else
+          std::shuffle(bits.begin(),bits.end(),RNG_Engine);
+        const uint8_t delta_s = (edge.first==connector) ? delta_ser_sym(RNG_Engine) : delta_ser(RNG_Engine);
+        for(uint8_t b=0; b<delta_s;++b)
+          graph[connector] ^=(interface_type(1)<<bits[b]);
+      }
+    }
+  }while(CountActiveInterfaces(graph)!=total_edges);
+  return graph;
+}
+
+void EnsureNeutralDisconnections(BGenotype& genotype) {
+  BGenotype temp_genotype(genotype);
+  uint8_t edges = CountActiveInterfaces(temp_genotype);
+
+  if(edges==0)
+    return; //no edges, so no need to swap anything
+  StripNoncodingGenotype(temp_genotype);
+  if(temp_genotype.size()==genotype.size())
+    return; //not disconnected, no need to swap
+  uint8_t new_edges=CountActiveInterfaces(temp_genotype);
+  if(new_edges==0)//disjointed with internal edge on 2nd tile
+    std::swap_ranges(genotype.begin(),genotype.begin()+4,genotype.begin()+4);
+  else {
+    if(new_edges!=edges) { //disjointed with internal edges on both
+      do {
+        std::generate(genotype.begin()+4,genotype.end(),interface_filler);
+      }while(CountActiveInterfaces(genotype)!=new_edges);
+      //established disjointed tile with internal tile on first, neutral 2nd tile
+      do {
+        temp_genotype.assign(genotype.begin()+4,genotype.end());
+        mutator(temp_genotype);
+      }while(CountActiveInterfaces(temp_genotype)!=0); //don't allow new internal edges on 2nd tile, but can allow external edge
+      std::swap_ranges(genotype.begin()+4, genotype.end(), temp_genotype.begin());
+    }
+  }
+}
