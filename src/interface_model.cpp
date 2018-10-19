@@ -1,11 +1,11 @@
 #include "interface_model.hpp"
 #include <functional>
 
-thread_local std::mt19937 RNG_Engine(341723847);//std::random_device{}());
+thread_local std::mt19937 RNG_Engine(std::random_device{}());
 thread_local auto interface_filler = std::bind(std::uniform_int_distribution<interface_type>(), std::ref(RNG_Engine));
 //std::normal_distribution<double> normal_dist(0,1);
 std::array<double,model_params::interface_size+1> binding_probabilities;
-thread_local GenotypeMutator mutator(1);
+
 bool InteractionMatrix(const interface_type face_1,const interface_type face_2) {
   return interface_model::SammingDistance(face_1,face_2)<=simulation_params::samming_threshold;
 }
@@ -125,7 +125,7 @@ BGenotype GenerateTargetGraph(std::map<uint8_t,std::vector<uint8_t>> edge_map,ui
   return graph;
 }
 
-void EnsureNeutralDisconnections(BGenotype& genotype) {
+void EnsureNeutralDisconnections(BGenotype& genotype, GenotypeMutator& mutator) {
   BGenotype temp_genotype(genotype);
   uint8_t edges = CountActiveInterfaces(temp_genotype);
 

@@ -2,7 +2,7 @@
 #sys.path.append('/scripts')
 #sys.path.append('../polyomino_core/scripts')
 
-from polyomino_visuals import VisualiseSingleShape as VSS
+#from polyomino_visuals import VisualiseSingleShape as VSS
 from interface_analysis import *
 from interface_methods import *
 
@@ -173,7 +173,7 @@ def plotExp(evo_data_struct):
                    for samp in evo_data_samp[phen][(bond,new)]:
                         samp=samp[:MAX_G]
                         ax_d[phen].plot(range(len(samp)),samp,c=phen_cols[ancestors[phen][new]],alpha=0.15,lw=.5)
-               VSS(PhenTable()[phen],ax_d[phen],(.4,.95),.2)
+               #VSS(PhenTable()[phen],ax_d[phen],(.4,.95),.2)
                
      #axarr[0,0].set_ylim((0.71,.87))
      f.tight_layout()
@@ -196,10 +196,17 @@ def plotPhaseSpace(evo_data,low=-2,high=2,res=250):
      
      
                
-     phase_parameters=calcTransitionParams(evo_strs,T,S_star)
+     phase_parameters=calcTransitionParams(evo_strs,evo_data.transitions,T,S_star)
      phen_mark={(2,0):'P',(4,0):'D',(4,1):'s',(8,0):'o',(16,0):'X',(12,0):'*'}
      jj=0
-     for ctp in filter(None,[calcTransitionParams(sampx,T,S_star) for sampx in sx]):
+     indv_params=[]
+     for sampx in sx:
+          try:
+               indv_params.append(calcTransitionParams(sampx,evo_data.transitions,T,S_star))
+          except:
+               print("incomplete data for indv params")
+     
+     for ctp in filter(None,sx):
           continue
           for (pure,phen,phen_source),phase_p in ctp.items():
                if pure:

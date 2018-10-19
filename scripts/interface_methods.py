@@ -160,34 +160,38 @@ def FourOne(a,seed=None):
      else:
            return .5*seed1()+.5*seed2()
      
-def calcTransitionParams(evo_strs,T,S_star):
+def calcTransitionParams(evo_strs,transitions,T,S_star):
      param_dict={}
 
      if (4,1) in evo_strs:
-          if (4,0) in evo_strs:
+          if (4,0) in transitions[(4,1)]:
                param_dict[(1,(4,1),(4,0))]=(evo_strs[(4,0)][(2,2)][-1]/S_star)**T
                param_dict[(0,(4,1),(4,0))]=(evo_strs[(4,1)][(4,3)][0]/evo_strs[(4,1)][(3,3)][0])**T
-          if (2,0) in evo_strs:
+          if (2,0) in transitions[(4,1)]:
                param_dict[(1,(4,1),(2,0))]=(S_star/evo_strs[(2,0)][(1,1)][-1])**T
                param_dict[(0,(4,1),(2,0))]=(evo_strs[(4,1)][(4,4)][0]/evo_strs[(4,1)][(3,4)][0])**T
 
      if (16,0) in evo_strs:
-          if (4,1) in evo_strs:
+          if (4,1) in transitions[(16,0)]:
                param_dict[(1,(16,0),(4,1))]=(evo_strs[(4,1)][(4,4)][-1]/evo_strs[(4,1)][(3,3)][-1])**T
                param_dict[(0,(16,0),(4,1))]=(evo_strs[(16,0)][(4,2)][0]/evo_strs[(16,0)][(3,2)][0])**T
-          if (8,0) in evo_strs:
+               param_dict[(0,(16,0),(16,0))]=(evo_strs[(16,0)][(4,2)][-1]/evo_strs[(16,0)][(3,2)][-1])**T
+          if (8,0) in transitions[(16,0)]:
                param_dict[(1,(16,0),(8,0))]=(S_star/evo_strs[(8,0)][(1,1)][-1])**T
                param_dict[(0,(16,0),(8,0))]=(evo_strs[(16,0)][(4,4)][0]/evo_strs[(16,0)][(3,4)][0])**T
-          param_dict[(0,(16,0),(16,0))]=(evo_strs[(16,0)][(4,4)][-1]/evo_strs[(16,0)][(3,4)][-1])**T
+               param_dict[(0,(16,0),(16,0))]=(evo_strs[(16,0)][(4,4)][-1]/evo_strs[(16,0)][(3,4)][-1])**T
+          
           
      if (12,0) in evo_strs:
-          if (4,1) in evo_strs:
+          if (4,1) in transitions[(12,0)]:
                param_dict[(1,(12,0),(4,1))]=((evo_strs[(4,1)][(4,4)][-1]/S_star)**T,(S_star/evo_strs[(4,1)][(3,3)][-1])**T)
                param_dict[(0,(12,0),(4,1))]=((evo_strs[(12,0)][(4,2)][0]/evo_strs[(12,0)][(2,2)][0])**T,(evo_strs[(12,0)][(2,2)][0]/evo_strs[(12,0)][(3,2)][0])**T)
-          if (8,0) in evo_strs:
+               param_dict[(0,(12,0),(12,0))]=((evo_strs[(12,0)][(4,2)][-1]/evo_strs[(12,0)][(2,2)][-1])**T,(evo_strs[(12,0)][(2,2)][-1]/evo_strs[(12,0)][(3,2)][-1])**T)
+          if (8,0) in transitions[(12,0)]:
                param_dict[(1,(12,0),(8,0))]=((S_star/evo_strs[(8,0)][(2,2)][-1])**T,(evo_strs[(8,0)][(2,2)][-1]/evo_strs[(8,0)][(1,2)][-1])**T)
                param_dict[(0,(12,0),(8,0))]=((evo_strs[(12,0)][(4,4)][0]/evo_strs[(12,0)][(2,4)][0])**T,(evo_strs[(12,0)][(2,4)][0]/evo_strs[(12,0)][(3,4)][0])**T)
-          param_dict[(0,(12,0),(12,0))]=((evo_strs[(12,0)][(4,4)][-1]/evo_strs[(12,0)][(2,2)][-1])**T,(evo_strs[(12,0)][(2,2)][-1]/evo_strs[(12,0)][(3,2)][-1])**T)     
+               param_dict[(0,(12,0),(12,0))]=((evo_strs[(12,0)][(4,4)][-1]/evo_strs[(12,0)][(2,4)][-1])**T,(evo_strs[(12,0)][(2,4)][-1]/evo_strs[(12,0)][(3,4)][-1])**T)
+               
      
      
      return param_dict

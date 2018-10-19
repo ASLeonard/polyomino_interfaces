@@ -32,7 +32,7 @@ def collateAnalysis(S_star,t,mu,gamma,runs):
      full_data=[]
      for r in runs:
           try:
-               full_data.extend(load(open('Mu{}Y{}T{}F{}O{}.pkl'.format(mu,S_star,t,gamma,r), 'rb')))
+               full_data.append(load(open('Mu{}Y{}T{}F{}O{}.pkl'.format(mu,S_star,t,gamma,r), 'rb')))
           except:
                print('missing pickle for run ',r)
      N_runs=0
@@ -76,7 +76,7 @@ def analysePhylogenetics(S_star,t,mu,gamma,r):
      if not forest:
           return None
      bond_data=treeBondStrengths(forest,st)
-     return bond_data,transitions,failed_jumps
+     return (bond_data,transitions,failed_jumps)
 
 class Tree(object):
      __slots__ = ('pID','bonds','new_bond','gen','seq')
@@ -302,10 +302,14 @@ def analyseHomogeneousPopulation(S_star,t,mu,gamma,r):
                
 def main(argv):
      if argv[1]=='reduced':
-          parallelAnalysis(*(float(i) for i in argv[2:6]),runs=int(argv[6]),offset=int(argv[7]),run_code='F')
+          params=tuple(float(i) for i in argv[2:6])+(int(argv[6]),)
+          print("running main for ",argv[6])
+          dump(analysePhylogenetics(*params), open('Mu{2}Y{0}T{1}F{3}O{4}.pkl'.format(*params), 'wb'))
+          #parallelAnalysis(*(float(i) for i in argv[2:6]),runs=int(argv[6]),offset=int(argv[7]),run_code='F')
      elif argv[1]=='collate':
           with open('/rscratch/asl47/Pickles/Y{}T{}Mu{}F{}.pkl'.format(*(float(i) for i in argv[2:6])), 'wb') as f:
-               dump(collateAnalysis(*(float(i) for i in argv[2:6]),runs=range(0,int(argv[6]),int(argv[7]))), f)
+               dump(collateAnalysis(*(float(i) for i in argv[2:6]),runs=range(int(argv[6]))), f)
+               
      elif argv[1]=='final':          
           parallelAnalysis(*(float(i) for i in argv[2:6]),runs=int(argv[6]),offset=int(argv[7]),run_code='B')
      elif argv[1]=='group':

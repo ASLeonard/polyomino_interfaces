@@ -12,9 +12,14 @@ namespace simulation_params {
 
 void EvolutionRunner() {
   const uint16_t N_runs=simulation_params::independent_trials;
-#pragma omp parallel for schedule(dynamic)
-  for(uint16_t r=0;r < N_runs;++r) 
+  const std::string py_analysis_mode=simulation_params::model_type==1 ? "reduced" : "final"; 
+  const std::string python_call="python3 ~/Documents/PolyDev/polyomino_interfaces/scripts/interface_analysis.py "+py_analysis_mode+" "+std::to_string(simulation_params::binding_threshold)+" "+std::to_string(simulation_params::temperature)+" "+std::to_string(simulation_params::mu_prob)+" "+std::to_string(simulation_params::fitness_factor)+" ";
+#pragma omp parallel for schedule(dynamic) 
+  for(uint16_t r=0;r < N_runs;++r) {
     EvolvePopulation("_Run"+std::to_string(r+simulation_params::run_offset));
+    //python call
+    std::system((python_call+std::to_string(r)).c_str());
+  }
 }
 void ReducedModelTable(FitnessPhenotypeTable* pt) {
   model_params::FIXED_TABLE=true;
@@ -79,6 +84,7 @@ void EvolvePopulation(std::string run_details) {
   std::set<interaction_pair> pid_interactions;
   BGenotype assembly_genotype;
   Phenotype_ID prev_ev;
+  GenotypeMutator mutator(simulation_params::mu_prob/(model_params::interface_size*4*simulation_params::n_tiles));
   
   for(uint32_t generation=0;generation<simulation_params::generation_limit;++generation) { /*! MAIN EVOLUTION LOOP */
     if(simulation_params::model_type==2)
@@ -89,7 +95,7 @@ void EvolvePopulation(std::string run_details) {
       mutator(evolving_genotype.genotype);      
      
       if(simulation_params::model_type==1)
-        EnsureNeutralDisconnections(evolving_genotype.genotype);         
+        EnsureNeutralDisconnections(evolving_genotype.genotype,mutator);         
             
       assembly_genotype=evolving_genotype.genotype;
       prev_ev=evolving_genotype.pid;
@@ -194,7 +200,7 @@ void SetRuntimeConfigurations(int argc, char* argv[]) {
       default: std::cout<<"Unknown Parameter Flag: "<<argv[arg][1]<<std::endl;
       }
     }
-    mutator=GenotypeMutator(simulation_params::mu_prob/(model_params::interface_size*4*simulation_params::n_tiles));
+    //mutator=GenotypeMutator(simulation_params::mu_prob/(model_params::interface_size*4*simulation_params::n_tiles));
     simulation_params::samming_threshold=static_cast<uint8_t>(model_params::interface_size*(1-simulation_params::binding_threshold));
     for(size_t i=0;i<=simulation_params::samming_threshold;++i)
       binding_probabilities[i]=std::pow(1-double(i)/model_params::interface_size,simulation_params::temperature);

@@ -55,8 +55,7 @@ private:
   std::vector<uint8_t> interface_indices;
   std::binomial_distribution<uint8_t> b_dist;
 };
-extern thread_local GenotypeMutator mutator;
 
 BGenotype GenerateTargetGraph(std::map<uint8_t,std::vector<uint8_t>> edge_map,uint8_t graph_size);
-void EnsureNeutralDisconnections(BGenotype& genotype);
+void EnsureNeutralDisconnections(BGenotype& genotype,GenotypeMutator& mutator);
 
