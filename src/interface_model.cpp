@@ -6,12 +6,19 @@ thread_local auto interface_filler = std::bind(std::uniform_int_distribution<int
 //std::normal_distribution<double> normal_dist(0,1);
 std::array<double,model_params::interface_size+1> binding_probabilities;
 
-bool InteractionMatrix(const interface_type face_1,const interface_type face_2) {
-  return interface_model::SammingDistance(face_1,face_2)<=simulation_params::samming_threshold;
-}
-double BindingStrength(const interface_type face_1,const interface_type face_2) {
+double InterfaceAssembly::InteractionMatrix(const interface_type face_1,const interface_type face_2) {
   return binding_probabilities[interface_model::SammingDistance(face_1,face_2)];
+  /*
+  if(simulation_params::samming_threshold >= (uint8_t SD = interface_model::SammingDistance(face_1,face_2)))
+    return binding_probabilities[SD];
+  else
+    return 0;
+  */
+  //interface_model::SammingDistance(face_1,face_2)<=simulation_params::samming_threshold;
 }
+//double BindingStrength(const interface_type face_1,const interface_type face_2) {
+//  return binding_probabilities[interface_model::SammingDistance(face_1,face_2)];
+//}
 
 namespace simulation_params
 {
@@ -43,9 +50,9 @@ namespace interface_model
   }
 
   double PolyominoAssemblyOutcome(BGenotype& binary_genome,FitnessPhenotypeTable* pt,Phenotype_ID& pid,std::set<interaction_pair>& pid_interactions) {
-    StripNoncodingGenotype(binary_genome);
+    InterfaceAssembly::StripNoncodingGenotype(binary_genome);
     size_t UB_size=static_cast<size_t>(.75*binary_genome.size()*binary_genome.size());
-    const std::vector<std::pair<interaction_pair,double> > edges = GetEdgePairs(binary_genome);
+    const std::vector<std::pair<interaction_pair,double> > edges = InterfaceAssembly::GetEdgePairs(binary_genome);
 
     std::vector<int8_t> assembly_information;
     Phenotype phen;
@@ -55,7 +62,7 @@ namespace interface_model
     std::map<Phenotype_ID, std::set<interaction_pair> > phenotype_interactions;
     
     for(uint16_t nth=0;nth<model_params::phenotype_builds;++nth) {
-      assembly_information=AssemblePolyomino(edges,simulation_params::fixed_seed ? 1 : 1+4*std::uniform_int_distribution<uint8_t>(0,binary_genome.size()/4-1)(RNG_Engine),UB_size,interacting_indices);
+      assembly_information=InterfaceAssembly::AssemblePolyomino(edges,simulation_params::fixed_seed ? 1 : 1+4*std::uniform_int_distribution<uint8_t>(0,binary_genome.size()/4-1)(RNG_Engine),UB_size,interacting_indices);
       if(assembly_information.size()>0) {
         phen=GetPhenotypeFromGrid(assembly_information);
         Phenotype_IDs.emplace_back(pt->GetPhenotypeID(phen));
@@ -93,7 +100,7 @@ namespace interface_model
 void RandomiseGenotype(BGenotype& genotype) {
   do {
     std::generate(genotype.begin(),genotype.end(),interface_filler);
-  }while(CountActiveInterfaces(genotype)!=0);
+  }while(InterfaceAssembly::CountActiveInterfaces(genotype)!=0);
 }
 
 BGenotype GenerateTargetGraph(std::map<uint8_t,std::vector<uint8_t>> edge_map,uint8_t graph_size) {
@@ -121,32 +128,32 @@ BGenotype GenerateTargetGraph(std::map<uint8_t,std::vector<uint8_t>> edge_map,ui
           graph[connector] ^=(interface_type(1)<<bits[b]);
       }
     }
-  }while(CountActiveInterfaces(graph)!=total_edges);
+  }while(InterfaceAssembly::CountActiveInterfaces(graph)!=total_edges);
   return graph;
 }
 
 void EnsureNeutralDisconnections(BGenotype& genotype, GenotypeMutator& mutator) {
   BGenotype temp_genotype(genotype);
-  uint8_t edges = CountActiveInterfaces(temp_genotype);
+  uint8_t edges = InterfaceAssembly::CountActiveInterfaces(temp_genotype);
 
   if(edges==0)
     return; //no edges, so no need to swap anything
-  StripNoncodingGenotype(temp_genotype);
+  InterfaceAssembly::StripNoncodingGenotype(temp_genotype);
   if(temp_genotype.size()==genotype.size())
     return; //not disconnected, no need to swap
-  uint8_t new_edges=CountActiveInterfaces(temp_genotype);
+  uint8_t new_edges=InterfaceAssembly::CountActiveInterfaces(temp_genotype);
   if(new_edges==0)//disjointed with internal edge on 2nd tile
     std::swap_ranges(genotype.begin(),genotype.begin()+4,genotype.begin()+4);
   else {
     if(new_edges!=edges) { //disjointed with internal edges on both
       do {
         std::generate(genotype.begin()+4,genotype.end(),interface_filler);
-      }while(CountActiveInterfaces(genotype)!=new_edges);
+      }while(InterfaceAssembly::CountActiveInterfaces(genotype)!=new_edges);
       //established disjointed tile with internal tile on first, neutral 2nd tile
       do {
         temp_genotype.assign(genotype.begin()+4,genotype.end());
         mutator(temp_genotype);
-      }while(CountActiveInterfaces(temp_genotype)!=0); //don't allow new internal edges on 2nd tile, but can allow external edge
+      }while(InterfaceAssembly::CountActiveInterfaces(temp_genotype)!=0); //don't allow new internal edges on 2nd tile, but can allow external edge
       std::swap_ranges(genotype.begin()+4, genotype.end(), temp_genotype.begin());
     }
   }

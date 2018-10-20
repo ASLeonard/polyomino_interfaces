@@ -5,11 +5,15 @@
 
 using interface_type = uint64_t;
 
-bool InteractionMatrix(const interface_type face_1,const interface_type face_2);
-double BindingStrength(const interface_type face_1,const interface_type face_2);
-
-#include "core_assembly.hpp"
+#include "core_genotype.hpp"
+#include "core_phenotype.hpp"
 #include "core_evolution.hpp"
+
+class InterfaceAssembly : public PolyominoAssembly<InterfaceAssembly> {
+public:
+  //thread_local std::vector<double> A::v {1,2,3};
+  static double InteractionMatrix(const interface_type, const interface_type);
+};
 
 using BGenotype = std::vector<interface_type>;
 
