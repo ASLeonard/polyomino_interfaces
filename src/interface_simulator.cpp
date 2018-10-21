@@ -56,9 +56,10 @@ void EvolvePopulation(std::string run_details) {
   std::string file_simulation_details="Y"+std::to_string(simulation_params::binding_threshold)+"_T"+ std::to_string(simulation_params::temperature) +"_Mu"+std::to_string(simulation_params::mu_prob)+"_Gamma"+std::to_string(simulation_params::fitness_factor)+run_details+".txt";
     
   std::ofstream fout_strength(file_base_path+"Strengths_"+file_simulation_details);
-  std::ofstream fout_phenotype(file_base_path+"Phenotypes_"+file_simulation_details);  
-  std::ofstream fout_phenotype_history(file_base_path+"PhenotypeHistory_"+file_simulation_details);    
-    
+  std::ofstream fout_phenotype(file_base_path+"Phenotype_Table"+file_simulation_details);  
+  std::ofstream fout_phenotype_history(file_base_path+"Selections_"+file_simulation_details);    
+  std::ofstream fout_phenotype_IDs(file_base_path+"PIDs_"+file_simulation_details);
+  
   std::vector<double> population_fitnesses(simulation_params::population_size);
   std::vector<PopulationGenotype> evolving_population(simulation_params::population_size),reproduced_population(simulation_params::population_size);
   
@@ -128,8 +129,8 @@ void EvolvePopulation(std::string run_details) {
     fout_phenotype_history<<"\n";
     evolving_population.swap(reproduced_population);
   } /* END EVOLUTION LOOP */
-  
-  pt.PrintTable(fout_phenotype); 
+  if(!model_params::FIXED_TABLE)
+    pt.PrintTable(fout_phenotype); 
 }
 
 
