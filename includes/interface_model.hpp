@@ -1,29 +1,41 @@
 #pragma once
 #include <cstdint>
 #include <climits>
-
-
-using interface_type = uint64_t;
+#include <functional>
 
 #include "core_genotype.hpp"
 #include "core_phenotype.hpp"
 #include "core_evolution.hpp"
 
+using interface_type = uint64_t;
+using BGenotype = std::vector<interface_type>;
+  
+
+
 class InterfaceAssembly : public PolyominoAssembly<InterfaceAssembly> {
 public:
-  //thread_local std::vector<double> A::v {1,2,3};
+  constexpr static uint8_t interface_size=CHAR_BIT*sizeof(interface_type);
+  
+
+
+  static thread_local std::array<uint8_t,interface_size> bits;
+
+ 
+  static std::array<double,interface_size+1> binding_probabilities;
+
+  
+  
   static double InteractionMatrix(const interface_type, const interface_type);
+  static void Mutation(BGenotype& genotype);
+  static std::binomial_distribution<uint8_t> q_dist;
 };
 
-using BGenotype = std::vector<interface_type>;
 
-namespace model_params
-{
-  constexpr uint8_t interface_size=CHAR_BIT*sizeof(interface_type);
-}
+
+
 
 extern std::normal_distribution<double> normal_dist;
-extern std::array<double,model_params::interface_size+1> binding_probabilities;
+//extern std::array<double,InterfaceAssembly::interface_size+1> binding_probabilities;
 
 namespace simulation_params
 {
@@ -45,7 +57,7 @@ namespace interface_model
 void RandomiseGenotype(BGenotype& genotype);
 
 struct GenotypeMutator { 
-  GenotypeMutator(double mu) : interface_indices(model_params::interface_size),b_dist(model_params::interface_size,mu) {std::iota(interface_indices.begin(),interface_indices.end(),0);}
+  GenotypeMutator(double mu) : interface_indices(InterfaceAssembly::interface_size),b_dist(InterfaceAssembly::interface_size,mu) {std::iota(interface_indices.begin(),interface_indices.end(),0);}
   void operator()(BGenotype& binary_genotype) {
     for(interface_type& base : binary_genotype) {
       std::shuffle(interface_indices.begin(), interface_indices.end(), RNG_Engine);

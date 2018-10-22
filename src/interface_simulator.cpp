@@ -85,7 +85,7 @@ void EvolvePopulation(std::string run_details) {
   std::set<interaction_pair> pid_interactions;
   BGenotype assembly_genotype;
   Phenotype_ID prev_ev;
-  GenotypeMutator mutator(simulation_params::mu_prob/(model_params::interface_size*4*simulation_params::n_tiles));
+  GenotypeMutator mutator(simulation_params::mu_prob/(InterfaceAssembly::interface_size*4*simulation_params::n_tiles));
   
   for(uint32_t generation=0;generation<simulation_params::generation_limit;++generation) { /*! MAIN EVOLUTION LOOP */
     if(simulation_params::model_type==2)
@@ -139,21 +139,23 @@ void EvolvePopulation(std::string run_details) {
 /********************/
 int main(int argc, char* argv[]) {
   char run_option;
-  if(argc<2) {
-    std::cout<<"no Params"<<std::endl;
-    run_option='H';
+  if(argc<=1) {
+    std::cout<<"Too few arguments"<<std::endl;
+    return 0;
   }
-  else {
-    run_option=argv[1][1];
-    SetRuntimeConfigurations(argc,argv);
-  }
+
+  run_option=argv[1][1];
+  SetRuntimeConfigurations(argc,argv);
+    
+  
+  
   
   switch(run_option) {
   case 'E':
     EvolutionRunner();
     break;
   case '?':
-    for(auto b : binding_probabilities)
+    for(auto b : InterfaceAssembly::binding_probabilities)
       std::cout<<b<<std::endl;
     break;
   case 'H':
@@ -201,10 +203,13 @@ void SetRuntimeConfigurations(int argc, char* argv[]) {
       default: std::cout<<"Unknown Parameter Flag: "<<argv[arg][1]<<std::endl;
       }
     }
-    //mutator=GenotypeMutator(simulation_params::mu_prob/(model_params::interface_size*4*simulation_params::n_tiles));
-    simulation_params::samming_threshold=static_cast<uint8_t>(model_params::interface_size*(1-simulation_params::binding_threshold));
+    simulation_params::samming_threshold=static_cast<uint8_t>(InterfaceAssembly::interface_size*(1-simulation_params::binding_threshold));
+    std::iota(InterfaceAssembly::bits.begin(),InterfaceAssembly::bits.end(),0);
     for(size_t i=0;i<=simulation_params::samming_threshold;++i)
-      binding_probabilities[i]=std::pow(1-double(i)/model_params::interface_size,simulation_params::temperature);
+      InterfaceAssembly::binding_probabilities[i]=std::pow(1-double(i)/InterfaceAssembly::interface_size,simulation_params::temperature);
+    //std::binomial_distribution<uint8_t> InterfaceAssembly::q_dist();
+    //distribution.param(std::normal_distribution<double>(mean,std).param());
+    InterfaceAssembly::q_dist.param(std::binomial_distribution<uint8_t>(InterfaceAssembly::interface_size,simulation_params::mu_prob/(InterfaceAssembly::interface_size*4*simulation_params::n_tiles)).param());
   
   }
 }

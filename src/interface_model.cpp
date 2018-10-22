@@ -1,10 +1,26 @@
 #include "interface_model.hpp"
-#include <functional>
+
 
 thread_local std::mt19937 RNG_Engine(std::random_device{}());
 thread_local auto interface_filler = std::bind(std::uniform_int_distribution<interface_type>(), std::ref(RNG_Engine));
+
+thread_local std::array<uint8_t,InterfaceAssembly::interface_size> InterfaceAssembly::bits;
+std::array<double,InterfaceAssembly::interface_size+1> InterfaceAssembly::binding_probabilities;
+std::binomial_distribution<uint8_t> InterfaceAssembly::q_dist;
+  
+//
+
 //std::normal_distribution<double> normal_dist(0,1);
-std::array<double,model_params::interface_size+1> binding_probabilities;
+
+
+void InterfaceAssembly::Mutation(BGenotype& genotype) {
+  for(interface_type& base : genotype) {
+    std::shuffle(bits.begin(), bits.end(), RNG_Engine);
+    const uint8_t num_mutations=q_dist(RNG_Engine);
+    for(uint8_t nth=0;nth<num_mutations;++nth) 
+      base ^= (interface_type(1) << bits[nth]);
+  }
+}
 
 double InterfaceAssembly::InteractionMatrix(const interface_type face_1,const interface_type face_2) {
   return binding_probabilities[interface_model::SammingDistance(face_1,face_2)];
@@ -37,7 +53,7 @@ namespace model_params
 namespace interface_model
 {
   interface_type ReverseBits(interface_type v) {
-    interface_type s(model_params::interface_size), mask= ~0;
+    interface_type s(InterfaceAssembly::interface_size), mask= ~0;
     while ((s >>= 1) > 0) {
       mask ^= (mask << s);
       v = ((v >> s) & mask) | ((v << s) & ~mask);
@@ -108,13 +124,12 @@ BGenotype GenerateTargetGraph(std::map<uint8_t,std::vector<uint8_t>> edge_map,ui
   BGenotype graph(graph_size);
   
   std::uniform_int_distribution<uint8_t> delta_ser(0,simulation_params::samming_threshold),delta_ser_sym(0,simulation_params::samming_threshold/2);
-  std::vector<uint8_t> bits(model_params::interface_size),bits_sym(model_params::interface_size/2);
+  std::vector<uint8_t> bits(InterfaceAssembly::interface_size),bits_sym(InterfaceAssembly::interface_size/2);
   std::iota(bits.begin(),bits.end(),0);
   std::iota(bits_sym.begin(),bits_sym.end(),0);
 
   do {
-    RandomiseGenotype(graph);
-    //std::generate(graph.begin(),graph.end(),interface_filler); 
+    RandomiseGenotype(graph); 
     for(auto edge : edge_map) {
       graph[edge.first]=interface_filler();
       for(uint8_t connector : edge.second) {
@@ -152,9 +167,10 @@ void EnsureNeutralDisconnections(BGenotype& genotype, GenotypeMutator& mutator) 
       //established disjointed tile with internal tile on first, neutral 2nd tile
       do {
         temp_genotype.assign(genotype.begin()+4,genotype.end());
-        mutator(temp_genotype);
+	InterfaceAssembly::Mutation(temp_genotype);
       }while(InterfaceAssembly::CountActiveInterfaces(temp_genotype)!=0); //don't allow new internal edges on 2nd tile, but can allow external edge
       std::swap_ranges(genotype.begin()+4, genotype.end(), temp_genotype.begin());
     }
   }
 }
+

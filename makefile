@@ -34,11 +34,9 @@ INCDEP      := -I$(INCDIR) -I$(LIBDIR)/$(INCDIR)
 #---------------------------------------------------------------------------------
 #DO NOT EDIT BELOW THIS LINE
 #---------------------------------------------------------------------------------
-CORE_SOURCES := $(shell find $(LIBDIR)/$(SRCDIR) -type f -name core_*.$(SRCEXT))
 PE_SOURCES := $(shell find $(SRCDIR) -type f -name interface_*.$(SRCEXT))
-
 PE_OBJECTS     := $(patsubst $(SRCDIR)/%,$(BUILDDIR)/%,$(PE_SOURCES:.$(SRCEXT)=.$(OBJEXT)))
-CORE_OBJECTS     := $(patsubst $(LIBDIR)/$(SRCDIR)/%,$(BUILDDIR)/%,$(CORE_SOURCES:.$(SRCEXT)=.$(OBJEXT)))
+
 
 #Default Make
 all: Pe 
@@ -62,15 +60,6 @@ $(BUILDDIR)/%.$(OBJEXT): $(SRCDIR)/%.$(SRCEXT)
 	@mkdir -p $(dir $@)
 	$(CXX) $(CXXFLAGS) $(INC) -c -o $@ $<
 	@$(CXX) $(CXXFLAGS) $(INCDEP) -MM $(SRCDIR)/$*.$(SRCEXT) > $(BUILDDIR)/$*.$(DEPEXT)
-	@cp -f $(BUILDDIR)/$*.$(DEPEXT) $(BUILDDIR)/$*.$(DEPEXT).tmp
-	@sed -e 's|.*:|$(BUILDDIR)/$*.$(OBJEXT):|' < $(BUILDDIR)/$*.$(DEPEXT).tmp > $(BUILDDIR)/$*.$(DEPEXT)
-	@sed -e 's/.*://' -e 's/\\$$//' < $(BUILDDIR)/$*.$(DEPEXT).tmp | fmt -1 | sed -e 's/^ *//' -e 's/$$/:/' >> $(BUILDDIR)/$*.$(DEPEXT)
-	@rm -f $(BUILDDIR)/$*.$(DEPEXT).tmp
-
-$(BUILDDIR)/%.$(OBJEXT): $(LIBDIR)/$(SRCDIR)/%.$(SRCEXT)
-	@mkdir -p $(dir $@)
-	$(CXX) $(CXXFLAGS) $(INC) -c -o $@ $<
-	@$(CXX) $(CXXFLAGS) $(INCDEP) -MM $(LIBDIR)/$(SRCDIR)/$*.$(SRCEXT) > $(BUILDDIR)/$*.$(DEPEXT)
 	@cp -f $(BUILDDIR)/$*.$(DEPEXT) $(BUILDDIR)/$*.$(DEPEXT).tmp
 	@sed -e 's|.*:|$(BUILDDIR)/$*.$(OBJEXT):|' < $(BUILDDIR)/$*.$(DEPEXT).tmp > $(BUILDDIR)/$*.$(DEPEXT)
 	@sed -e 's/.*://' -e 's/\\$$//' < $(BUILDDIR)/$*.$(DEPEXT).tmp | fmt -1 | sed -e 's/^ *//' -e 's/$$/:/' >> $(BUILDDIR)/$*.$(DEPEXT)
