@@ -7,7 +7,7 @@ namespace simulation_params
   uint16_t fitness_period=100;
   uint32_t generation_limit=100,independent_trials=1,run_offset=0;
   bool random_initilisation=true;
-  double mu_prob=1,fitness_jump=2,fitness_rise=10;
+  double fitness_jump=2,fitness_rise=10;
 }
 
 
@@ -49,3 +49,8 @@ private:
 };
 
 
+
+template<typename T, typename A>
+void BinaryWriter(std::ofstream& bfile,const std::vector<T,A>& vec) {
+  bfile.write(reinterpret_cast<const char*>(vec.data()), vec.size()*sizeof(T));
+}

@@ -1,6 +1,7 @@
 #include "interface_simulator.hpp"
 #include <iostream>
 
+constexpr bool BINARY_WRITE_FILES=false;
 bool KILL_BACK_MUTATIONS=false;
 const std::string file_base_path="//scratch//asl47//Data_Runs//Bulk_Data//";
 const std::map<Phenotype_ID,uint8_t> phen_stages{{{0,0},0},{{1,0},1},{{2,0},2},{{4,0},2},{{4,1},3},{{8,0},3},{{12,0},4},{{16,0},4}};
@@ -44,6 +45,7 @@ void ReducedModelTable(FitnessPhenotypeTable* pt) {
 
 void FinalModelTable(FitnessPhenotypeTable* pt) {
   model_params::FIXED_TABLE=true;
+  KILL_BACK_MUTATIONS=true;
   pt->known_phenotypes[4].emplace_back(Phenotype{2,2, {1, 2, 4, 3}});
   pt->known_phenotypes[12].emplace_back(Phenotype{4,4, {0, 1, 2, 0, 1, 5, 6, 2, 4, 8, 7, 3, 0, 4, 3, 0}});
   pt->known_phenotypes[10].emplace_back(Phenotype{4,3, {0, 1, 2, 0, 1, 5, 6, 2, 4, 3, 7, 3}});
@@ -53,12 +55,13 @@ void FinalModelTable(FitnessPhenotypeTable* pt) {
 }
 
 void EvolvePopulation(std::string run_details) {
-  std::string file_simulation_details="Y"+std::to_string(simulation_params::binding_threshold)+"_T"+ std::to_string(simulation_params::temperature) +"_Mu"+std::to_string(simulation_params::mu_prob)+"_Gamma"+std::to_string(simulation_params::fitness_factor)+run_details+".txt";
+  std::string file_simulation_details=BINARY_WRITE_FILES ? run_details : "_Y"+std::to_string(simulation_params::binding_threshold)+"_T"+ std::to_string(simulation_params::temperature) +"_Mu"+std::to_string(simulation_params::mu_prob)+"_Gamma"+std::to_string(simulation_params::fitness_factor)+run_details+".txt";
     
-  std::ofstream fout_strength(file_base_path+"Strengths_"+file_simulation_details);
-  std::ofstream fout_phenotype(file_base_path+"Phenotype_Table"+file_simulation_details);  
-  std::ofstream fout_phenotype_history(file_base_path+"Selections_"+file_simulation_details);    
-  std::ofstream fout_phenotype_IDs(file_base_path+"PIDs_"+file_simulation_details);
+  std::ofstream fout_strength(file_base_path+"Strengths"+file_simulation_details,BINARY_WRITE_FILES ? std::ios::binary :std::ios::out);
+  std::ofstream fout_phenotype(file_base_path+"PhenotypeTable"+file_simulation_details,BINARY_WRITE_FILES ? std::ios::binary :std::ios::out);  
+  std::ofstream fout_selection_history(file_base_path+"Selections"+file_simulation_details,BINARY_WRITE_FILES ? std::ios::binary :std::ios::out);    
+  std::ofstream fout_phenotype_IDs(file_base_path+"PIDs"+file_simulation_details,BINARY_WRITE_FILES ? std::ios::binary :std::ios::out );
+  
   
   std::vector<double> population_fitnesses(simulation_params::population_size);
   std::vector<PopulationGenotype> evolving_population(simulation_params::population_size),reproduced_population(simulation_params::population_size);
@@ -85,7 +88,14 @@ void EvolvePopulation(std::string run_details) {
   std::set<interaction_pair> pid_interactions;
   BGenotype assembly_genotype;
   Phenotype_ID prev_ev;
-  GenotypeMutator mutator(simulation_params::mu_prob/(InterfaceAssembly::interface_size*4*simulation_params::n_tiles));
+  std::vector<uint8_t> binary_pids,binary_strengths;
+  std::vector<uint16_t> binary_selections;
+  if(BINARY_WRITE_FILES) {
+    binary_pids.reserve(2*simulation_params::population_size);
+    binary_strengths.reserve(12*simulation_params::population_size);
+    binary_selections.reserve(simulation_params::population_size);
+  }
+  
   
   for(uint32_t generation=0;generation<simulation_params::generation_limit;++generation) { /*! MAIN EVOLUTION LOOP */
     if(simulation_params::model_type==2)
@@ -93,10 +103,10 @@ void EvolvePopulation(std::string run_details) {
 
     uint16_t nth_genotype=0;
     for(PopulationGenotype& evolving_genotype : evolving_population) { /*! GENOTYPE LOOP */
-      mutator(evolving_genotype.genotype);      
+      InterfaceAssembly::Mutation(evolving_genotype.genotype);      
      
       if(simulation_params::model_type==1)
-        EnsureNeutralDisconnections(evolving_genotype.genotype,mutator);         
+        EnsureNeutralDisconnections(evolving_genotype.genotype);         
             
       assembly_genotype=evolving_genotype.genotype;
       prev_ev=evolving_genotype.pid;
@@ -108,35 +118,67 @@ void EvolvePopulation(std::string run_details) {
         pid_interactions.clear();        
       }
       ++nth_genotype;
-      
-      for(auto x : pid_interactions)
-        fout_strength<<+x.first<<" "<<+x.second<<" "<<+interface_model::SammingDistance(assembly_genotype[x.first],assembly_genotype[x.second])<<".";
-      fout_strength<<",";
-      
-      fout_phenotype_history << +evolving_genotype.pid.first <<" "<<+evolving_genotype.pid.second<<" ";
+
+      if(BINARY_WRITE_FILES) {
+        binary_pids.emplace_back(evolving_genotype.pid.first);
+        binary_pids.emplace_back(evolving_genotype.pid.second);
+        for(auto x : pid_interactions)
+          binary_strengths.insert(binary_strengths.end(),{x.first,x.second,interface_model::SammingDistance(assembly_genotype[x.first],assembly_genotype[x.second])});
+        binary_strengths.emplace_back(255);
+      }
+      else {
+        for(auto x : pid_interactions)
+          fout_strength<<+x.first<<" "<<+x.second<<" "<<+interface_model::SammingDistance(assembly_genotype[x.first],assembly_genotype[x.second])<<".";
+        fout_strength<<",";
+        fout_phenotype_IDs << +evolving_genotype.pid.first <<" "<<+evolving_genotype.pid.second<<" ";
+      }
     } /*! END GENOTYPE LOOP */
 
-
-    fout_phenotype_history<<"\n";
-    fout_strength<<"\n";
+    
+    
+    
 
     /*! SELECTION */
     uint16_t nth_repro=0;
     for(uint16_t selected : RouletteWheelSelection(population_fitnesses)) {
       reproduced_population[nth_repro++]=evolving_population[selected];
-      fout_phenotype_history<<+selected<<" ";
+      if(BINARY_WRITE_FILES)
+        binary_selections.emplace_back(selected);
+      else
+        fout_selection_history<<+selected<<" ";
     }
-    fout_phenotype_history<<"\n";
     evolving_population.swap(reproduced_population);
+
+  
+    if(BINARY_WRITE_FILES) {
+      BinaryWriter(fout_phenotype_IDs,binary_pids);
+      binary_pids.clear();
+      BinaryWriter(fout_selection_history,binary_selections);
+      binary_selections.clear();
+      BinaryWriter(fout_strength,binary_strengths);
+      binary_strengths.clear();
+    }
+    else {
+      fout_selection_history<<"\n";
+      fout_phenotype_IDs<<"\n";
+      fout_strength<<"\n";
+    }
+    
   } /* END EVOLUTION LOOP */
   if(!model_params::FIXED_TABLE)
-    pt.PrintTable(fout_phenotype); 
+    pt.PrintTable(fout_phenotype);
+  
 }
+
+
+//auto myfile = std::fstream("file.binary", std::ios::out | std::ios::binary);
 
 
 /********************/
 /*******!MAIN!*******/
 /********************/
+
+
 int main(int argc, char* argv[]) {
   char run_option;
   if(argc<=1) {
@@ -146,17 +188,13 @@ int main(int argc, char* argv[]) {
 
   run_option=argv[1][1];
   SetRuntimeConfigurations(argc,argv);
-    
-  
-  
   
   switch(run_option) {
   case 'E':
     EvolutionRunner();
     break;
   case '?':
-    for(auto b : InterfaceAssembly::binding_probabilities)
-      std::cout<<b<<std::endl;
+    PrintBindingStrengths();
     break;
   case 'H':
   default:
@@ -187,9 +225,12 @@ void SetRuntimeConfigurations(int argc, char* argv[]) {
       case 'R': simulation_params::random_initilisation=std::stoi(argv[arg+1])>0;break;
 
         /*! simulation specific */
+        /*
+      DONE IN INIT FILE
       case 'M': simulation_params::mu_prob=std::stod(argv[arg+1]);break;
       case 'Y': simulation_params::binding_threshold=std::stod(argv[arg+1]);break;
       case 'T': simulation_params::temperature=std::stod(argv[arg+1]);break;
+        */
       case 'S': simulation_params::fixed_seed=std::stoi(argv[arg+1])>0;break;
       case 'A': simulation_params::model_type=std::stoi(argv[arg+1]);break;   
       case 'H': simulation_params::dissociation_time=std::stoi(argv[arg+1]);break;
@@ -203,14 +244,7 @@ void SetRuntimeConfigurations(int argc, char* argv[]) {
       default: std::cout<<"Unknown Parameter Flag: "<<argv[arg][1]<<std::endl;
       }
     }
-    simulation_params::samming_threshold=static_cast<uint8_t>(InterfaceAssembly::interface_size*(1-simulation_params::binding_threshold));
-    std::iota(InterfaceAssembly::bits.begin(),InterfaceAssembly::bits.end(),0);
-    for(size_t i=0;i<=simulation_params::samming_threshold;++i)
-      InterfaceAssembly::binding_probabilities[i]=std::pow(1-double(i)/InterfaceAssembly::interface_size,simulation_params::temperature);
-    //std::binomial_distribution<uint8_t> InterfaceAssembly::q_dist();
-    //distribution.param(std::normal_distribution<double>(mean,std).param());
-    InterfaceAssembly::q_dist.param(std::binomial_distribution<uint8_t>(InterfaceAssembly::interface_size,simulation_params::mu_prob/(InterfaceAssembly::interface_size*4*simulation_params::n_tiles)).param());
-  
+
   }
 }
 

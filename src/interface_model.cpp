@@ -1,14 +1,47 @@
 #include "interface_model.hpp"
-
+#include <functional>
 
 thread_local std::mt19937 RNG_Engine(std::random_device{}());
-thread_local auto interface_filler = std::bind(std::uniform_int_distribution<interface_type>(), std::ref(RNG_Engine));
 
-thread_local std::array<uint8_t,InterfaceAssembly::interface_size> InterfaceAssembly::bits;
-std::array<double,InterfaceAssembly::interface_size+1> InterfaceAssembly::binding_probabilities;
-std::binomial_distribution<uint8_t> InterfaceAssembly::q_dist;
+namespace {
+  std::array<uint8_t,interface_size> _Seqer() {
+    std::array<uint8_t,interface_size> res;
+    std::iota(res.begin(),res.end(),0);
+    return res;
+  }
   
-//
+  thread_local std::array<uint8_t,interface_size> bits=_Seqer();
+  thread_local auto interface_filler = std::bind(std::uniform_int_distribution<interface_type>(), std::ref(RNG_Engine));
+
+  static auto initialize_PAR() {
+    std::ifstream fin("configs.ini");
+    char param_name;
+    std::string param_value;
+    while ( fin >> param_name >> param_value ) {
+      switch(param_name) {
+      case 'M': simulation_params::mu_prob=std::stod(param_value);break;
+      case 'Y': simulation_params::binding_threshold=std::stod(param_value);break;
+      case 'T': simulation_params::temperature=std::stod(param_value);break;
+      }
+    }
+    simulation_params::samming_threshold=static_cast<uint8_t>(interface_size*(1-simulation_params::binding_threshold));
+    std::array<double,interface_size+1> bps{};
+    for(size_t i=0;i<=simulation_params::samming_threshold;++i)
+      bps[i]=std::pow(1-double(i)/interface_size,simulation_params::temperature);
+   
+    return std::make_pair(bps,std::binomial_distribution<uint8_t>(interface_size,simulation_params::mu_prob/(interface_size*4*simulation_params::n_tiles)));   
+  }
+  
+}
+auto [binding_probabilities, q_dist] = initialize_PAR(); // xx, yy are double
+
+
+void PrintBindingStrengths() {
+  for(auto b : binding_probabilities)
+    std::cout<<b<<std::endl;
+}      
+
+
 
 //std::normal_distribution<double> normal_dist(0,1);
 
@@ -24,24 +57,15 @@ void InterfaceAssembly::Mutation(BGenotype& genotype) {
 
 double InterfaceAssembly::InteractionMatrix(const interface_type face_1,const interface_type face_2) {
   return binding_probabilities[interface_model::SammingDistance(face_1,face_2)];
-  /*
-  if(simulation_params::samming_threshold >= (uint8_t SD = interface_model::SammingDistance(face_1,face_2)))
-    return binding_probabilities[SD];
-  else
-    return 0;
-  */
-  //interface_model::SammingDistance(face_1,face_2)<=simulation_params::samming_threshold;
 }
-//double BindingStrength(const interface_type face_1,const interface_type face_2) {
-//  return binding_probabilities[interface_model::SammingDistance(face_1,face_2)];
-//}
+
 
 namespace simulation_params
 {
   uint16_t dissociation_time=0;
   uint8_t n_tiles=2,model_type=0,samming_threshold=10;
   bool fixed_seed=false;
-  double temperature=0,binding_threshold=1;
+  double temperature=0,binding_threshold=1,mu_prob=1;
 }
 namespace model_params
 {
@@ -50,10 +74,11 @@ namespace model_params
   bool FIXED_TABLE=false;
 }
 
+
 namespace interface_model
 {
   interface_type ReverseBits(interface_type v) {
-    interface_type s(InterfaceAssembly::interface_size), mask= ~0;
+    interface_type s(interface_size), mask= ~0;
     while ((s >>= 1) > 0) {
       mask ^= (mask << s);
       v = ((v >> s) & mask) | ((v << s) & ~mask);
@@ -124,7 +149,7 @@ BGenotype GenerateTargetGraph(std::map<uint8_t,std::vector<uint8_t>> edge_map,ui
   BGenotype graph(graph_size);
   
   std::uniform_int_distribution<uint8_t> delta_ser(0,simulation_params::samming_threshold),delta_ser_sym(0,simulation_params::samming_threshold/2);
-  std::vector<uint8_t> bits(InterfaceAssembly::interface_size),bits_sym(InterfaceAssembly::interface_size/2);
+  std::vector<uint8_t> bits(interface_size),bits_sym(interface_size/2);
   std::iota(bits.begin(),bits.end(),0);
   std::iota(bits_sym.begin(),bits_sym.end(),0);
 
@@ -147,7 +172,7 @@ BGenotype GenerateTargetGraph(std::map<uint8_t,std::vector<uint8_t>> edge_map,ui
   return graph;
 }
 
-void EnsureNeutralDisconnections(BGenotype& genotype, GenotypeMutator& mutator) {
+void EnsureNeutralDisconnections(BGenotype& genotype) {
   BGenotype temp_genotype(genotype);
   uint8_t edges = InterfaceAssembly::CountActiveInterfaces(temp_genotype);
 
