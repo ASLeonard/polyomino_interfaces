@@ -1,7 +1,7 @@
 #include "interface_simulator.hpp"
 #include <iostream>
 
-constexpr bool BINARY_WRITE_FILES=false;
+constexpr bool BINARY_WRITE_FILES=true;
 bool KILL_BACK_MUTATIONS=false;
 const std::string file_base_path="//scratch//asl47//Data_Runs//Bulk_Data//";
 const std::map<Phenotype_ID,uint8_t> phen_stages{{{0,0},0},{{1,0},1},{{2,0},2},{{4,0},2},{{4,1},3},{{8,0},3},{{12,0},4},{{16,0},4}};
@@ -14,12 +14,12 @@ namespace simulation_params {
 void EvolutionRunner() {
   const uint16_t N_runs=simulation_params::independent_trials;
   const std::string py_analysis_mode=simulation_params::model_type==1 ? "reduced" : "final"; 
-  const std::string python_call="python3 ~/Documents/PolyDev/polyomino_interfaces/scripts/interface_analysis.py "+py_analysis_mode+" "+std::to_string(simulation_params::binding_threshold)+" "+std::to_string(simulation_params::temperature)+" "+std::to_string(simulation_params::mu_prob)+" "+std::to_string(simulation_params::fitness_factor)+" ";
+  const std::string python_call="python3 ~/Documents/PolyDev/polyomino_interfaces/scripts/interface_analysis.py "+py_analysis_mode+" "+std::to_string(BINARY_WRITE_FILES)+" ";
+  const std::string python_params=" "+std::to_string(simulation_params::binding_threshold)+" "+std::to_string(simulation_params::temperature)+" "+std::to_string(simulation_params::mu_prob)+" "+std::to_string(simulation_params::fitness_factor)+" "+std::to_string(simulation_params::population_size);
 #pragma omp parallel for schedule(dynamic) 
   for(uint16_t r=0;r < N_runs;++r) {
     EvolvePopulation("_Run"+std::to_string(r+simulation_params::run_offset));
-    //python call
-    std::system((python_call+std::to_string(r)).c_str());
+    /*!PYTHON CALL*/std::system((python_call+std::to_string(r)+python_params).c_str());
   }
 }
 void ReducedModelTable(FitnessPhenotypeTable* pt) {
@@ -90,7 +90,7 @@ void EvolvePopulation(std::string run_details) {
   Phenotype_ID prev_ev;
   std::vector<uint8_t> binary_pids,binary_strengths;
   std::vector<uint16_t> binary_selections;
-  if(BINARY_WRITE_FILES) {
+  if constexpr (BINARY_WRITE_FILES) {
     binary_pids.reserve(2*simulation_params::population_size);
     binary_strengths.reserve(12*simulation_params::population_size);
     binary_selections.reserve(simulation_params::population_size);
@@ -119,7 +119,7 @@ void EvolvePopulation(std::string run_details) {
       }
       ++nth_genotype;
 
-      if(BINARY_WRITE_FILES) {
+      if constexpr (BINARY_WRITE_FILES) {
         binary_pids.emplace_back(evolving_genotype.pid.first);
         binary_pids.emplace_back(evolving_genotype.pid.second);
         for(auto x : pid_interactions)
@@ -142,7 +142,7 @@ void EvolvePopulation(std::string run_details) {
     uint16_t nth_repro=0;
     for(uint16_t selected : RouletteWheelSelection(population_fitnesses)) {
       reproduced_population[nth_repro++]=evolving_population[selected];
-      if(BINARY_WRITE_FILES)
+      if constexpr (BINARY_WRITE_FILES)
         binary_selections.emplace_back(selected);
       else
         fout_selection_history<<+selected<<" ";
@@ -150,7 +150,7 @@ void EvolvePopulation(std::string run_details) {
     evolving_population.swap(reproduced_population);
 
   
-    if(BINARY_WRITE_FILES) {
+    if constexpr (BINARY_WRITE_FILES) {
       BinaryWriter(fout_phenotype_IDs,binary_pids);
       binary_pids.clear();
       BinaryWriter(fout_selection_history,binary_selections);

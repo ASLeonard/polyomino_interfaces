@@ -1,16 +1,16 @@
 import numpy as np
 from numpy import linalg as LA
+import os
 
-def setBasePath(path):
-     default_file='/{}_Y{:.6f}_T{:.6f}_Mu{:.6f}_Gamma{:.6f}_Run{}.txt'
-     global BASE_PATH
-     if path=='scratch':
-          BASE_PATH='/scratch/asl47/Data_Runs/Bulk_Data'
-     elif path=='rscratch':
-         BASE_PATH='/rscratch/asl47/Pickles'
+def setBasePath(path,binary_mode):
+     if binary_mode:
+          default_file='/{}_Run{}'
      else:
-         BASE_PATH='../'
-     BASE_PATH+=default_file
+          default_file='/{}_Y{:.6f}_T{:.6f}_Mu{:.6f}_Gamma{:.6f}_Run{}.txt'
+          
+     global BASE_PATH
+     
+     BASE_PATH=path+default_file
          
 def setLength(length):
      global interface_length
@@ -18,7 +18,6 @@ def setLength(length):
      global interface_type
      interface_type={8:np.uint8,16:np.uint16,32:np.uint32,64:np.uint64}[interface_length]
 
-setBasePath('scratch')
 setLength(64)
              
 def BindingStrength(base1,base2):
@@ -29,32 +28,57 @@ def reverseBits(value):
 
 class Interactions(object):
      __slots__ = ('bonds','strengths')
-     def __init__(self,bonds=None,strengths=None):
+     def __init__(self,bonds=[],strengths=[]):
           self.bonds=bonds
           self.strengths=strengths
      def __iter__(self):
           for b,s in zip(self.bonds,self.strengths):
                yield (b,s)
-
+     def __repr__(self):
+          return "{} interactions".format(len(self.bonds))
          
-def LoadEvolutionHistory(S_star,t,mu,gamma,run):
-     phenotype_IDs,selections=[],[]
-     for lc,line in enumerate(open(BASE_PATH.format('PhenotypeHistory',S_star,t,mu,gamma,run))):
-          converted=[int(i) for i in line.split()]
-          if lc%2:
-               selections.append(converted)
+
+
+
+def LSHB(run,pop_size):
+     return np.fromfile('/scratch/asl47/Data_Runs/Bulk_Data/Selections_Run{}'.format(run),dtype=np.uint16).reshape(-1,pop_size)
+
+def LPB(run,pop_size):
+     return np.fromfile('/scratch/asl47/Data_Runs/Bulk_Data/PIDs_Run{}'.format(run),dtype=np.uint8).reshape(-1,pop_size,2)
+
+def LSB(run,pop_size):
+     raw_b=np.fromfile('/scratch/asl47/Data_Runs/Bulk_Data/Strengths_Run{}'.format(run),dtype=np.uint8)
+     wheres=np.where(raw_b== 255)[0]
+     res=np.empty(wheres.shape,dtype=object)
+     low_slice,ith=0,0
+     for high_slice in wheres:
+          sub_slice=raw_b[low_slice:high_slice]
+          if len(sub_slice)==0:
+               res[ith]=Interactions()
           else:
-               phenotype_IDs.append(list(zip(*(iter(converted),) * 2)))
+               res[ith]=Interactions(tuple(zip(sub_slice[::3],sub_slice[1::3])),1-sub_slice[2::3]/interface_length)
+          low_slice=high_slice+1
+          ith+=1
 
-     return ObjArray(phenotype_IDs),np.array(selections,np.uint16)
 
-def LoadGenotypeHistory(S_star,t,mu,gamma,run):
-    genotypes=[]
-    for line in open(BASE_PATH.format('GenotypeHistory',S_star,t,mu,gamma,run)):
-        genotypes.append([[interface_type(int(f)) for f in genotype.split()] for genotype in line.split('x')][:-1])
-    return ObjArray(genotypes)
+     return res.reshape(-1,pop_size)
+          
+def LoadSelectionHistory(run,S_star,t,mu,gamma):
+     selections=[]
+     for line in open(BASE_PATH.format('Selections',S_star,t,mu,gamma,run)):
+          converted=[int(i) for i in line.split()]
+          selections.append(converted)
+     return np.array(selections,np.uint16)
 
-def LoadStrengthHistory(S_star,t,mu,gamma,run):
+def LoadPIDHistory(run,S_star,t,mu,gamma):
+     phenotype_IDs=[]
+     for line in open(BASE_PATH.format('PIDs',S_star,t,mu,gamma,run)):
+          converted=[int(i) for i in line.split()]
+          phenotype_IDs.append(list(zip(*(iter(converted),) * 2)))
+
+     return np.array(phenotype_IDs,dtype=np.uint8)
+
+def LoadStrengthHistory(run,S_star,t,mu,gamma):
      strengths=[]
      for line in open(BASE_PATH.format('Strengths',S_star,t,mu,gamma,run)):
           row=[]
@@ -69,19 +93,27 @@ def LoadStrengthHistory(S_star,t,mu,gamma,run):
                     str_list.append(1-int(pairing[2])/interface_length)
                row.append(Interactions(bond_list,str_list))
           strengths.append(row)
-                   
-
+                
      return ObjArray(strengths)
 
 def LoadPhenotypeTable(S_star,t,mu,gamma,run):
-     phenotype_table= sorted([[int(i) for i in line.split()] for line in open(BASE_PATH.format('Phenotypes',S_star,t,mu,gamma,run))],key=lambda z: z[0])
+     phenotype_table= sorted([[int(i) for i in line.split()] for line in open(BASE_PATH.format('PhenotypeTable',S_star,t,mu,gamma,run))],key=lambda z: z[0])
      return {tuple(px[:2]): tuple(px[2:]) for px in phenotype_table}
 
-def LoadAll(mu,S_star,t,gamma,run):
-     st=LoadStrengthHistory(S_star,t,mu,gamma,run)
-     p,s=LoadEvolutionHistory(S_star,t,mu,gamma,run)
-     pt=LoadPhenotypeTable(S_star,t,mu,gamma,run)
-     return (s,p,st,pt)
+def LoadAll(run,params,cwd=None):
+     binary_mode=type(params) is int
+     setBasePath(cwd if cwd else os.getcwd(),binary_mode)
+
+     if binary_mode:
+          s=LSHB(run,params)
+          p=LPB(run,params)
+          st=LSB(run,params)
+     else:     
+          st=LoadStrengthHistory(run,*params)
+          p=LoadPIDHistory(run,*params)
+          s=LoadSelectionHistory(run,*params)
+          
+     return (s,p,st,None)
 
 def ObjArray(data):
      shape=(len(data),len(data[0]))

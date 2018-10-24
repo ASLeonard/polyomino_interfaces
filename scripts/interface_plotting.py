@@ -1,8 +1,10 @@
-#import sys
-#sys.path.append('/scripts')
-#sys.path.append('../polyomino_core/scripts')
+import sys
+import numpy as np
+if not np.any(['scripts' in pth for pth in sys.path]):
+     sys.path.append('scripts/')
+     sys.path.append('../polyomino_core/scripts')
 
-#from polyomino_visuals import VisualiseSingleShape as VSS
+from polyomino_visuals import VisualiseSingleShape as VSS
 from interface_analysis import *
 from interface_methods import *
 
@@ -14,7 +16,7 @@ from matplotlib.patches import Patch,Rectangle,PathPatch,ConnectionPatch
 from matplotlib.colors import LinearSegmentedColormap, LogNorm
 from pickle import load
 
-import numpy as np
+
 from scipy.stats import linregress,binom,scoreatpercentile,t
 from scipy.interpolate import splprep, splev
 from itertools import combinations_with_replacement as cwr,product
@@ -173,7 +175,7 @@ def plotExp(evo_data_struct):
                    for samp in evo_data_samp[phen][(bond,new)]:
                         samp=samp[:MAX_G]
                         ax_d[phen].plot(range(len(samp)),samp,c=phen_cols[ancestors[phen][new]],alpha=0.15,lw=.5)
-               #VSS(PhenTable()[phen],ax_d[phen],(.4,.95),.2)
+               VSS(PhenTable()[phen],ax_d[phen],(.4,.95),.2)
                
      #axarr[0,0].set_ylim((0.71,.87))
      f.tight_layout()
