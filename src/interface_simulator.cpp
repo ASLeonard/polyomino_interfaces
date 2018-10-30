@@ -4,7 +4,7 @@
 constexpr bool BINARY_WRITE_FILES=true;
 bool KILL_BACK_MUTATIONS=false;
 const std::string file_base_path="//scratch//asl47//Data_Runs//Bulk_Data//";
-const std::map<Phenotype_ID,uint8_t> phen_stages{{{0,0},0},{{1,0},1},{{2,0},2},{{4,0},2},{{4,1},3},{{8,0},3},{{12,0},4},{{16,0},4}};
+const std::map<Phenotype_ID,uint8_t> phen_stages{{{0,0},0},{{10,0},0},{{1,0},1},{{2,0},2},{{4,0},2},{{4,1},3},{{8,0},3},{{12,0},4},{{16,0},4}};
 
 namespace simulation_params {
   uint16_t population_size=100;
@@ -13,13 +13,17 @@ namespace simulation_params {
 
 void EvolutionRunner() {
   const uint16_t N_runs=simulation_params::independent_trials;
-  const std::string py_analysis_mode=simulation_params::model_type==1 ? "reduced" : "final"; 
+  const std::string py_analysis_mode="internal "+std::to_string(simulation_params::model_type); 
   const std::string python_call="python3 ~/Documents/PolyDev/polyomino_interfaces/scripts/interface_analysis.py "+py_analysis_mode+" "+std::to_string(BINARY_WRITE_FILES)+" ";
   const std::string python_params=" "+std::to_string(simulation_params::binding_threshold)+" "+std::to_string(simulation_params::temperature)+" "+std::to_string(simulation_params::mu_prob)+" "+std::to_string(simulation_params::fitness_factor)+" "+std::to_string(simulation_params::population_size);
+
+  
 #pragma omp parallel for schedule(dynamic) 
   for(uint16_t r=0;r < N_runs;++r) {
     EvolvePopulation("_Run"+std::to_string(r+simulation_params::run_offset));
-    /*!PYTHON CALL*/std::system((python_call+std::to_string(r)+python_params).c_str());
+    /*!PYTHON CALL*/
+    std::system((python_call+std::to_string(r)+python_params).c_str());
+    /*!PYTHON CALL*/
   }
 }
 void ReducedModelTable(FitnessPhenotypeTable* pt) {
@@ -54,8 +58,17 @@ void FinalModelTable(FitnessPhenotypeTable* pt) {
   pt->phenotype_fitnesses[10].emplace_back(0);
 }
 
+void DimerModelTable(FitnessPhenotypeTable* pt) {
+  model_params::FIXED_TABLE=true;
+  pt->known_phenotypes[2].emplace_back(Phenotype{2,1, {1,3}});
+  pt->known_phenotypes[2].emplace_back(Phenotype{2,1, {1,5}});
+  pt->phenotype_fitnesses[2].emplace_back(1);
+  pt->phenotype_fitnesses[2].emplace_back(1);
+}
+
+
 void EvolvePopulation(std::string run_details) {
-  std::string file_simulation_details=BINARY_WRITE_FILES ? run_details : "_Y"+std::to_string(simulation_params::binding_threshold)+"_T"+ std::to_string(simulation_params::temperature) +"_Mu"+std::to_string(simulation_params::mu_prob)+"_Gamma"+std::to_string(simulation_params::fitness_factor)+run_details+".txt";
+  std::string file_simulation_details=BINARY_WRITE_FILES ? run_details+".BIN" : "_Y"+std::to_string(simulation_params::binding_threshold)+"_T"+ std::to_string(simulation_params::temperature) +"_Mu"+std::to_string(simulation_params::mu_prob)+"_Gamma"+std::to_string(simulation_params::fitness_factor)+run_details+".txt";
     
   std::ofstream fout_strength(file_base_path+"Strengths"+file_simulation_details,BINARY_WRITE_FILES ? std::ios::binary :std::ios::out);
   std::ofstream fout_phenotype(file_base_path+"PhenotypeTable"+file_simulation_details,BINARY_WRITE_FILES ? std::ios::binary :std::ios::out);  
@@ -70,6 +83,15 @@ void EvolvePopulation(std::string run_details) {
   DynamicFitnessLandscape dfl(&pt,simulation_params::fitness_period,simulation_params::fitness_rise);
   
   switch(simulation_params::model_type) {
+  case 3: DimerModelTable(&pt);
+    {
+      BGenotype ref_genotype=GenerateTargetGraph({{0,{0}}},4);
+      ref_genotype.insert(ref_genotype.end(),ref_genotype.begin(),ref_genotype.end());
+      for(auto& species : evolving_population)
+        species.genotype=ref_genotype;
+    }
+    break;
+      
   case 2: FinalModelTable(&pt);
     {
       const BGenotype ref_genotype=GenerateTargetGraph({{1,{0,7}},{4,{5}}},simulation_params::n_tiles*4);
@@ -78,7 +100,7 @@ void EvolvePopulation(std::string run_details) {
     }
     break;
   case 1: ReducedModelTable(&pt);
-    __attribute__ ((fallthrough));
+    [[fallthrough]];
   default:
     for(auto& species : evolving_population)
       RandomiseGenotype(species.genotype);
@@ -111,7 +133,8 @@ void EvolvePopulation(std::string run_details) {
       assembly_genotype=evolving_genotype.genotype;
       prev_ev=evolving_genotype.pid;
       population_fitnesses[nth_genotype]=interface_model::PolyominoAssemblyOutcome(assembly_genotype,&pt,evolving_genotype.pid,pid_interactions);
-      
+
+
       if((simulation_params::model_type==2 && assembly_genotype.size()/4 != simulation_params::n_tiles) || (KILL_BACK_MUTATIONS && prev_ev!=evolving_genotype.pid && phen_stages.at(prev_ev)>=phen_stages.at(evolving_genotype.pid))) {
         population_fitnesses[nth_genotype]=0;
         evolving_genotype.pid=NULL_pid;
@@ -170,10 +193,6 @@ void EvolvePopulation(std::string run_details) {
   
 }
 
-
-//auto myfile = std::fstream("file.binary", std::ios::out | std::ios::binary);
-
-
 /********************/
 /*******!MAIN!*******/
 /********************/
@@ -225,12 +244,12 @@ void SetRuntimeConfigurations(int argc, char* argv[]) {
       case 'R': simulation_params::random_initilisation=std::stoi(argv[arg+1])>0;break;
 
         /*! simulation specific */
-        /*
-      DONE IN INIT FILE
-      case 'M': simulation_params::mu_prob=std::stod(argv[arg+1]);break;
-      case 'Y': simulation_params::binding_threshold=std::stod(argv[arg+1]);break;
-      case 'T': simulation_params::temperature=std::stod(argv[arg+1]);break;
-        */
+        
+        //DONE IN INIT FILE
+      case 'M':break;// simulation_params::mu_prob=std::stod(argv[arg+1]);break;
+      case 'Y':break;// simulation_params::binding_threshold=std::stod(argv[arg+1]);break;
+      case 'T':break;// simulation_params::temperature=std::stod(argv[arg+1]);break;
+        
       case 'S': simulation_params::fixed_seed=std::stoi(argv[arg+1])>0;break;
       case 'A': simulation_params::model_type=std::stoi(argv[arg+1]);break;   
       case 'H': simulation_params::dissociation_time=std::stoi(argv[arg+1]);break;

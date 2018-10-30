@@ -10,6 +10,11 @@ from collections import defaultdict,Counter
 from itertools import combinations,product,groupby
 from operator import itemgetter
 
+import warnings
+
+#GLOBAL PIDS
+null_pid,init_pid=np.array([0,0],dtype=np.uint8),np.array([1,0],dtype=np.uint8)
+
 def parallelAnalysis(S_star,t,mu,gamma,runs,offset=0,run_code='F'):
      setBasePath('scratch')
      chosen_function=analysePhylogenetics if run_code=='F' else analyseHomogeneousPopulation
@@ -24,7 +29,8 @@ def parallelAnalysis(S_star,t,mu,gamma,runs,offset=0,run_code='F'):
 def collateNPZs(S_star,t,mu,gamma,runs):
      full_data=[]
      for r in runs:
-          full_data.extend(np.load(open('Mu{}Y{}T{}F{}O{}.npz'.format(mu,S_star,t,gamma,r), 'rb'))['arr_0'])
+          #return np.load(open('Mu{}Y{}T{}F{}O{}.npz'.format(mu,S_star,t,gamma,r), 'rb'))
+          full_data.append(np.load(open('Mu{}Y{}T{}F{}O{}.npz'.format(mu,S_star,t,gamma,r), 'rb'))['arr_0'])
      return np.asarray(full_data)
 
 def collateAnalysis(S_star,t,mu,gamma,runs):
@@ -93,7 +99,7 @@ def KAG(phenotypes_in,selections,interactions):
      phenotypes=phenotypes_in.copy()
      max_gen,pop_size=selections.shape
      
-     null_pid,init_pid=np.array([0,0],dtype=np.uint8),np.array([1,0],dtype=np.uint8)
+     
      forest,temp_forest=[],[]
      transitions=defaultdict(int)
 
@@ -228,20 +234,30 @@ def treeBondStrengths(KAG,interactions):
           bond_data[tuple(tree.pID)].append((tree.gen,dict(bond_maps)))
      return dict(bond_data)     
 
+def plotBs(a):
+     plt.figure()
+     c=['r','b','g']
+     for i in a:
+          for g,j in enumerate(i.T):
+               plt.plot(range(1000),j,c[g])
+     plt.show(block=False)
          
-def plotPhen2(ps):
+def plotPhen2(pss):
+     ps=ObjArray([[tuple(i) for i in row]for row in pss])
+     
      plt.figure()
      refs=list(np.unique(ps))
      c={K:i for i,K in enumerate(refs)}
      z=np.zeros(ps.shape)
      for i,j in product(range(ps.shape[0]),range(ps.shape[1])):
-          z[i,j]=c[ps[i,j]]
+          z[i,j]=c[tuple(pss[i,j])]
      plt.pcolormesh(z.T)
      plt.colorbar()
      plt.show(block=False)
      
 def plotPhen(ps):
      plt.figure()
+     ps=[[tuple(i) for i in row]for row in ps]
      refs=list(np.unique(ps))
      d={K:[] for K in refs}
      for row in ps:
@@ -289,14 +305,14 @@ def writeIt():
      np.savez_compressed('/rscratch/asl47/Pickles/test.npy',[a,b])
      
 def analyseHomogeneousPopulation(run,params):
-     s,phenotypes,st,phen_table=LoadAll(r,params)
+     selections,phenotypes,st,phen_table=LoadAll(run,params)
      
      max_gen,pop_size=selections.shape
      param_trajectory=[]
      for generation in range(max_gen):
           params=defaultdict(list)
           for species in range(pop_size):
-               if phenotypes[generation,species]==(0,0):
+               if np.array_equal(phenotypes[generation,species],null_pid):
                     continue
                if len(st[generation,species].bonds)!=3:
                     continue
@@ -309,28 +325,65 @@ def analyseHomogeneousPopulation(run,params):
                     return None
           param_trajectory.append([np.mean(params['a']),np.mean(params['b'])])
      return np.asarray(param_trajectory)
+
+def analyseDimers(run,params):
+     selections,phenotypes,st,phen_table=LoadAll(run,params)
+     
+     max_gen,pop_size=selections.shape
+     param_trajectory=np.zeros((max_gen,3))
+     #print(phenotypes[0])
+     for generation in range(max_gen):
+          params=np.zeros((pop_size,3))
+          #params=defaultdict(list)
+          for species in range(pop_size):
+               if np.array_equal(phenotypes[generation,species],null_pid):
+                    continue
+               #if len(st[generation,species].bonds)!=3:
+               #     continue
+               #print(st[generation,species].bonds)
+               for bond,strength in st[generation,species]:
+                    if bond[0]==bond[1]:
+                         if bond[0]==0:
+                              params[species][0]=strength
+                         else:
+                              params[species][1]=strength
+                    else:
+                         params[species][2]=strength
+
+          params[params == 0] = np.nan
+          with warnings.catch_warnings():
+               warnings.simplefilter("ignore", category=RuntimeWarning)
+               param_trajectory[generation]=np.nanmean(params,axis=0)
+     return param_trajectory
      
                
 def main(argv):
-     if argv[1]=='reduced':
-          HPC_FLAG=argv[2]=='1'
-          #print("hPC?",HPC_FLAG,argv[2],bool(argv[2]))
-          run=int(argv[3])
-          format_params=tuple(float(i) for i in argv[4:8])
-          run_params=int(argv[8]) if HPC_FLAG else format_params
-          #print("rp", run_params)
-          with open('Mu{2}Y{0}T{1}F{3}O{4}.pkl'.format(*format_params+(run,)),'wb') as f:
-               dump(analysePhylogenetics(run,run_params),f)
+     model_type=int(argv[2])
+     if argv[1]=='internal':
+          
+          HPC_FLAG=argv[3]=='1'
+          run=int(argv[4])
+          format_params=tuple(float(i) for i in argv[5:9])
+          run_params=int(argv[9]) if HPC_FLAG else format_params
+          
+          if model_type==1:
+               with open('Mu{2}Y{0}T{1}F{3}O{4}.pkl'.format(*format_params+(run,)),'wb') as f:
+                    dump(analysePhylogenetics(run,run_params),f)
+          elif model_type==2:
+               np.savez_compressed('Mu{2}Y{0}T{1}F{3}O{4}'.format(*format_params+(run,)),analyseHomogeneousPopulation(run,run_params))
+          elif model_type==3:
+               np.savez_compressed('Mu{2}Y{0}T{1}F{3}O{4}'.format(*format_params+(run,)),analyseDimers(run,run_params))
 
-     elif argv[1]=='collate':
-          with open('/rscratch/asl47/Pickles/Y{}T{}Mu{}F{}.pkl'.format(*(float(i) for i in argv[2:6])), 'wb') as f:
-               dump(collateAnalysis(*(float(i) for i in argv[2:6]),runs=range(int(argv[6]))), f)
-               
-     elif argv[1]=='final':          
-          parallelAnalysis(*(float(i) for i in argv[2:6]),runs=int(argv[6]),offset=int(argv[7]),run_code='B')
-     elif argv[1]=='group':
-          np.savez_compressed('/rscratch/asl47/Pickles/Y{}T{}Mu{}F{}'.format(*(float(i) for i in argv[2:6])),collateNPZs(*(float(i) for i in argv[2:6]),runs=range(0,int(argv[6]),int(argv[7]))))
-               
+     elif argv[1]=='external':
+          format_params=tuple(float(i) for i in argv[3:7])
+          file_pth='/rscratch/asl47/Pickles/Y{}T{}Mu{}F{}'.format(*format_params)
+          run_gen=range(int(argv[7]))
+          if model_type==1:
+               with open(file_pth+'.pkl', 'wb') as f:
+                    dump(collateAnalysis(*format_params,runs=run_gen), f)
+          elif model_type==2 or model_type==3:
+               np.savez_compressed(file_pth,collateNPZs(*format_params,runs=run_gen))
+          
      else:
           print('unknown')
                        

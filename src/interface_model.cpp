@@ -35,7 +35,6 @@ namespace {
 }
 auto [binding_probabilities, q_dist] = initialize_PAR(); // xx, yy are double
 
-
 void PrintBindingStrengths() {
   for(auto b : binding_probabilities)
     std::cout<<b<<std::endl;
@@ -124,7 +123,7 @@ namespace interface_model
     pid_interactions=phenotype_interactions[pid];    
     if(simulation_params::model_type==1)
       return pt->SingleFitness(pid,ID_counter[pid]);
-    if(simulation_params::model_type==2) {
+    if(simulation_params::model_type>=2) {
       for(auto kv : ID_counter) {
         if(kv.first!=NULL_pid && kv.first!=pid)
           pid_interactions.merge(phenotype_interactions[kv.first]);
@@ -135,6 +134,7 @@ namespace interface_model
     return pt->GenotypeFitness(ID_counter);
   }
 
+  
 
 }//end interface_model namespace
 
@@ -148,22 +148,24 @@ BGenotype GenerateTargetGraph(std::map<uint8_t,std::vector<uint8_t>> edge_map,ui
   const uint8_t total_edges=std::accumulate(edge_map.begin(),edge_map.end(),0,[](uint8_t size,const auto & p1) {return size+p1.second.size();});
   BGenotype graph(graph_size);
   
-  std::uniform_int_distribution<uint8_t> delta_ser(0,simulation_params::samming_threshold),delta_ser_sym(0,simulation_params::samming_threshold/2);
-  std::vector<uint8_t> bits(interface_size),bits_sym(interface_size/2);
+  std::uniform_int_distribution<uint8_t> delta_ser(0,simulation_params::samming_threshold);
+  std::vector<uint8_t> bits(interface_size);
   std::iota(bits.begin(),bits.end(),0);
-  std::iota(bits_sym.begin(),bits_sym.end(),0);
-
+  constexpr uint8_t shift_r=interface_size/2;
+  
   do {
     RandomiseGenotype(graph); 
     for(auto edge : edge_map) {
       graph[edge.first]=interface_filler();
       for(uint8_t connector : edge.second) {
-        graph[connector]=interface_model::ReverseBits(~graph[edge.first]);
-        if(edge.first==connector)
-          std::shuffle(bits_sym.begin(),bits_sym.end(),RNG_Engine);
-        else
-          std::shuffle(bits.begin(),bits.end(),RNG_Engine);
-        const uint8_t delta_s = (edge.first==connector) ? delta_ser_sym(RNG_Engine) : delta_ser(RNG_Engine);
+        /*!make perfectly self-interacting*/
+        if(edge.first!=connector)
+          graph[connector]=interface_model::ReverseBits(~graph[edge.first]);
+        else 
+          graph[connector]=(interface_model::ReverseBits(~(graph[edge.first]>>shift_r))>>shift_r) | ((graph[edge.first]>>shift_r)<<shift_r);
+
+        std::shuffle(bits.begin(),bits.end(),RNG_Engine);
+        const uint8_t delta_s = delta_ser(RNG_Engine)/((edge.first==connector) ? 2 : 1);
         for(uint8_t b=0; b<delta_s;++b)
           graph[connector] ^=(interface_type(1)<<bits[b]);
       }

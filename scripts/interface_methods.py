@@ -41,13 +41,13 @@ class Interactions(object):
 
 
 def LSHB(run,pop_size):
-     return np.fromfile('/scratch/asl47/Data_Runs/Bulk_Data/Selections_Run{}'.format(run),dtype=np.uint16).reshape(-1,pop_size)
+     return np.fromfile('/scratch/asl47/Data_Runs/Bulk_Data/Selections_Run{}.BIN'.format(run),dtype=np.uint16).reshape(-1,pop_size)
 
 def LPB(run,pop_size):
-     return np.fromfile('/scratch/asl47/Data_Runs/Bulk_Data/PIDs_Run{}'.format(run),dtype=np.uint8).reshape(-1,pop_size,2)
+     return np.fromfile('/scratch/asl47/Data_Runs/Bulk_Data/PIDs_Run{}.BIN'.format(run),dtype=np.uint8).reshape(-1,pop_size,2)
 
 def LSB(run,pop_size):
-     raw_b=np.fromfile('/scratch/asl47/Data_Runs/Bulk_Data/Strengths_Run{}'.format(run),dtype=np.uint8)
+     raw_b=np.fromfile('/scratch/asl47/Data_Runs/Bulk_Data/Strengths_Run{}.BIN'.format(run),dtype=np.uint8)
      wheres=np.where(raw_b== 255)[0]
      res=np.empty(wheres.shape,dtype=object)
      low_slice,ith=0,0
