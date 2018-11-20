@@ -464,10 +464,10 @@ def plotTransitionsDetailed(pt):
                     valid_transition=True
                     
                     offset2=0 if len(phen_map_SIZE[con_size+1])%2==1 else .5
-                    con_y=len(phen_map_SIZE[con_size+1])/2-sorted(phen_map_SIZE[con_size+1]).index(connector)-offset2
+                    con_y=len(phen_map_SIZE[con_size+1])//2-sorted(phen_map_SIZE[con_size+1]).index(connector)-offset2
                     con_x=sorted(phen_map_SIZE.keys()).index(con_size+1)
                     
-                    spline_points=np.array([[con_x+.25,con_y],[con_x+.3,con_y],[i-.3,len(phen_map_SIZE[c])/2-j-offset],[i-.25,len(phen_map_SIZE[c])/2-j-offset]])
+                    spline_points=np.array([[con_x+.25,con_y],[con_x+.3,con_y],[i-.3,len(phen_map_SIZE[c])//2-j-offset],[i-.25,len(phen_map_SIZE[c])//2-j-offset]])
                     dx_f=i-con_x
                     rev_tran=dx_f<0
                     dy_f=spline_points[1,1]-spline_points[0,1]
@@ -496,12 +496,12 @@ def plotTransitionsDetailed(pt):
                          dy=dy-(np.sign(dy_f)) if abs(dy)>=1 else 0
                          
                     if rev_tran:     
-                         spline_points=np.insert(spline_points,-2,[i,len(phen_map_SIZE[c])/2-j-offset+(.5 if (spline_points[-3,1]-len(phen_map_SIZE[c])/2-j-offset)>0 else-.5)],axis=0)
+                         spline_points=np.insert(spline_points,-2,[i,len(phen_map_SIZE[c])//2-j-offset+(.5 if (spline_points[-3,1]-len(phen_map_SIZE[c])//2-j-offset)>0 else-.5)],axis=0)
 
                     connection_dict[(phen,connector)]=AddConnectionPatch(ax,spline_points,float(weight)/total_weight)
 
                if valid_transition:
-                    phen_dict[phen]=AddPhenotypePatch(ax,phen,(i,len(phen_map_SIZE[c])/2 - j -offset))
+                    phen_dict[phen]=AddPhenotypePatch(ax,phen,(i,len(phen_map_SIZE[c])//2 - j -offset))
         
                     
      ax.set_aspect(1)
@@ -567,7 +567,7 @@ def AddPhenotypePatch(ax,shape,xy):
                new_x=xy[0]+(i-dx/2.)*scale
                new_y=xy[1]+(dy/2.-j)*scale-(1.*scale)
                
-               artists.append(ax.add_patch(Rectangle((new_x,new_y), scale, scale, fc=cols[(shape[2+i+j*dx]-1)/4],ec='k',fill=True,lw=2,picker=True,alpha=0.1)))
+               artists.append(ax.add_patch(Rectangle((new_x,new_y), scale, scale, fc=cols[(shape[2+i+j*dx]-1)//4],ec='k',fill=True,lw=2,picker=True,alpha=0.1)))
                artists.append(ax.arrow(*(np.array([new_x/scale+.5,new_y/scale+.5,0,0])+ar_offsets[(shape[2+i+j*dx]-1)%4])*scale, head_width=0.075*scale, head_length=0.15*scale, fc='k', ec='k',alpha=0.1))
                
      return artists
@@ -579,7 +579,7 @@ def AddConnectionPatch(ax,pts,weight):
      u_new = np.linspace(u.min(), u.max(), samples)
      x_new, y_new = splev(u_new, tck, der=0)
 
-     ar=ax.arrow(x_new[samples/2],y_new[samples/2],np.diff(x_new[samples/2:samples/2+2])[0],np.diff(y_new[samples/2:samples/2+2])[0], shape='full', lw=0, length_includes_head=True, head_width=.075,alpha=faded_lines_alpha,color='gray')
+     ar=ax.arrow(x_new[samples//2],y_new[samples//2],np.diff(x_new[samples//2:samples//2+2])[0],np.diff(y_new[samples//2:samples//2+2])[0], shape='full', lw=0, length_includes_head=True, head_width=.075,alpha=faded_lines_alpha,color='gray')
      ln=ax.plot(x_new, y_new,c='gray', ls='--',lw=weight*2,alpha=faded_lines_alpha)[0]
      
      return (ln,ar)

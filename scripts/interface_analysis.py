@@ -77,13 +77,19 @@ def convertRaggedArray(list_of_lists):
           rect_arr[i]=strs[:long_length]+[np.nan]*(long_length-len(strs[:long_length]))
      return rect_arr
 
-def analysePhylogenetics(run,params):
+def analysePhylogenetics(run,params,full_pIDs=False):
      s,p,st,phen_table=LoadAll(run,params)
      ret_val=KAG(p,s,st)
      if not ret_val:
           return None
+     transitions=ret_val[1]
+     failed_transitions=ret_val[2]
      bond_data=treeBondStrengths(ret_val[0],st)
-     return (bond_data,ret_val[1],ret_val[2])
+     if full_pIDs:
+          transitions={(phen_table[k[0]],phen_table[k[1]]):cnt for k,cnt in transitions.items()}
+          failed_transitions={(phen_table[k[0]],phen_table[k[1]]):cnt for k,cnt in failed_transitions.items()}
+          bond_data={phen_table[k]:v for k,v in bond_data.items()}
+     return (bond_data,transitions,failed_transitions)
 
 class Tree(object):
      __slots__ = ('pID','bonds','new_bond','gen','seq')
@@ -100,7 +106,6 @@ def KAG(phenotypes_in,selections,interactions):
      phenotypes=phenotypes_in.copy()
      max_gen,pop_size=selections.shape
      
-     
      forest,temp_forest=[],[]
      transitions=defaultdict(int)
 
@@ -115,8 +120,7 @@ def KAG(phenotypes_in,selections,interactions):
 
                if math.isinf(max_depth):
                     phenotypes[gen_val,descendents]=null_pid
-               
-                    
+                                   
                if not new_descendents:
                     break
                if (gen_val-tree.gen)>=max_depth:
@@ -126,21 +130,11 @@ def KAG(phenotypes_in,selections,interactions):
                gen_val+=1
           else:
                phenotypes[gen_val,descendents]=null_pid
-               
-     def __followTree(gen_val,c_idx,duration):
-          descendents=[]
-          for _ in range(duration):
-               new_descendents=[]
-               for descendent in descendents:
-                    new_descendents.extend([child for child in np.where(selections[gen_val]==descendent)[0] if np.array_equal(phenotypes_in[gen_val+1,child],tree.pID)])
-               if not new_descendents:
-                    break
-               descendents=new_descendents
-               tree.seq.append(descendents)
-               gen_val+=1
                               
      def __addBranch():
           bond_ref=interactions[g_idx,c_idx].bonds
+          if len(bond_ref)<len(interactions[g_idx-1,p_idx].bonds):
+               return True;
           pid_ref=phenotypes_in[g_idx,c_idx]
           if g_idx:
                new_bond=list(set(bond_ref)-set(interactions[g_idx-1,p_idx].bonds))
@@ -201,24 +195,28 @@ def KAG(phenotypes_in,selections,interactions):
                     forest.append(tree)
 
 
-
-     #phen_priority={(0,0):0,(1,0):1,(2,0):2,(4,0):2,(4,1):3,(8,0):3,(12,0):4,(16,0):4}
-     phen_priority={0:0,1:1,2:2,4:2,5:3,8:3,10:4,12:4,16:4}
-     sum_pid=np.sum(phenotypes_in,axis=2)
-     max_phens=np.vectorize(phen_priority.__getitem__)(sum_pid)
-     #print(np.where(sum_pid==10))
-     #max_priority=np.max(max_phens,axis=1)
      
+     #phen_priority={(0,0):0,(1,0):1,(2,0):2,(4,0):2,(4,1):3,(8,0):3,(12,0):4,(16,0):4}
+     #phen_priority={0:0,1:1,2:2,4:2,5:3,8:3,10:4,12:4,16:4}
+     #sum_pid=np.sum(phenotypes_in,axis=2)
+     #max_phens=np.vectorize(phen_priority.__getitem__)(sum_pid)
+     evo_stage=np.vectorize(lambda x: len(x.bonds))(interactions)
+
+     
+     POPULATION_FIXATION=pop_size//10
+     SURVIVAL_DEPTH=4
      failed_jumps=defaultdict(int)
      for g_idx,c_idx in product(range(max_gen-2,-1,-1),range(pop_size)):
           pid_c=phenotypes[g_idx,c_idx]
+          if np.array_equal(pid_c,null_pid):
+               continue
           
           pid_d=phenotypes_in[g_idx-1,selections[g_idx-1,c_idx]] if g_idx>0 else init_pid
-          
-          if not np.array_equal(pid_c,null_pid) and not np.array_equal(pid_c,pid_d):                    
-               if np.count_nonzero(max_phens[g_idx]>=phen_priority[np.sum(pid_c)])<(pop_size//10) and __growDescendentTree(Tree(pid_c,interactions[g_idx,c_idx].bonds,(-1,-1),g_idx,[[c_idx]]),4) is None:
-                    #if np.sum(pid_c)==10:
-                    #     pid_c=(12,0)
+          if not np.array_equal(pid_c,pid_d):
+               if np.count_nonzero(evo_stage[g_idx]>=len(interactions[g_idx,c_idx].bonds))>POPULATION_FIXATION:
+                    continue
+               
+               if __growDescendentTree(Tree(pid_c,interactions[g_idx,c_idx].bonds,(-1,-1),g_idx,[[c_idx]]),SURVIVAL_DEPTH) is None:
                     failed_jumps[tuple(tuple(_) for _ in (pid_c,pid_d))]+=1
 
      return (forest,dict(transitions),dict(failed_jumps))
@@ -377,24 +375,27 @@ def main(argv):
           format_params=tuple(float(i) for i in argv[5:9])
           run_params=int(argv[9]) if HPC_FLAG else format_params
           
-          if model_type==1:
+          if model_type==1 or model_type==0:
                with open('Mu{2}Y{0}T{1}F{3}O{4}.pkl'.format(*format_params+(run,)),'wb') as f:
-                    dump(analysePhylogenetics(run,run_params),f)
+                    dump(analysePhylogenetics(run,run_params,model_type==0),f)
           elif model_type==2:
                np.savez_compressed('Mu{2}Y{0}T{1}F{3}O{4}'.format(*format_params+(run,)),analyseHomogeneousPopulation(run,run_params))
           elif model_type==3:
                np.savez_compressed('Mu{2}Y{0}T{1}F{3}O{4}'.format(*format_params+(run,)),analyseDimers(run,run_params))
+          else:
+               print("hi")
 
      elif argv[1]=='external':
           format_params=tuple(float(i) for i in argv[3:7])
           file_pth='/rscratch/asl47/Pickles/Y{}T{}Mu{}F{}'.format(*format_params)
           run_gen=range(int(argv[7]))
-          if model_type==1:
+          if model_type==1 or model_type==0:
                with open(file_pth+'.pkl', 'wb') as f:
                     dump(collateAnalysis(*format_params,runs=run_gen), f)
           elif model_type==2 or model_type==3:
                np.savez_compressed(file_pth,collateNPZs(*format_params,runs=run_gen))
-          
+          else:
+               print("hi")
      else:
           print('unknown')
                        

@@ -4,7 +4,7 @@ import os
 
 def setBasePath(path,binary_mode):
      if binary_mode:
-          default_file='/{}_Run{}'
+          default_file='/{}_Run{}.BIN'
      else:
           default_file='/{}_Y{:.6f}_T{:.6f}_Mu{:.6f}_Gamma{:.6f}_Run{}.txt'
           
@@ -100,8 +100,8 @@ def LoadStrengthHistory(run,S_star,t,mu,gamma):
                 
      return ObjArray(strengths)
 
-def LoadPhenotypeTable(S_star,t,mu,gamma,run):
-     phenotype_table= sorted([[int(i) for i in line.split()] for line in open(BASE_PATH.format('PhenotypeTable',S_star,t,mu,gamma,run))],key=lambda z: z[0])
+def LoadPhenotypeTable(run):
+     phenotype_table= sorted([[int(i) for i in line.split()] for line in open(BASE_PATH.format('PhenotypeTable',run))],key=lambda z: z[0])
      return {tuple(px[:2]): tuple(px[2:]) for px in phenotype_table}
 
 def LoadAll(run,params,cwd=None):
@@ -116,8 +116,9 @@ def LoadAll(run,params,cwd=None):
           st=LoadStrengthHistory(run,*params)
           p=LoadPIDHistory(run,*params)
           s=LoadSelectionHistory(run,*params)
-          
-     return (s,p,st,None)
+     setBasePath(cwd if cwd else os.getcwd(),True)
+     table=LoadPhenotypeTable(run)
+     return (s,p,st,table)
 
 def ObjArray(data):
      shape=(len(data),len(data[0]))

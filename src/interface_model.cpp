@@ -1,6 +1,21 @@
 #include "interface_model.hpp"
 #include <functional>
 
+namespace simulation_params
+{
+  uint16_t dissociation_time=0;
+  uint8_t n_tiles=2,model_type=0,samming_threshold=10;
+  bool fixed_seed=false;
+  double temperature=0,binding_threshold=1,mu_prob=1;
+}
+namespace model_params
+{
+  uint8_t FREE_POLYOMINO=2, DETERMINISM_LEVEL=3;
+  uint16_t phenotype_builds=10;
+  double UND_threshold=0.2;
+  bool FIXED_TABLE=false;
+}
+
 thread_local std::mt19937 RNG_Engine(std::random_device{}());
 
 namespace {
@@ -17,11 +32,16 @@ namespace {
     std::ifstream fin("configs.ini");
     char param_name;
     std::string param_value;
+    fin >> param_name;
+    model_params::FREE_POLYOMINO=static_cast<uint8_t>(param_name-'0');
+    fin >> param_name;
+    model_params::DETERMINISM_LEVEL=static_cast<uint8_t>(param_name-'0');
     while ( fin >> param_name >> param_value ) {
       switch(param_name) {
       case 'M': simulation_params::mu_prob=std::stod(param_value);break;
       case 'Y': simulation_params::binding_threshold=std::stod(param_value);break;
       case 'T': simulation_params::temperature=std::stod(param_value);break;
+      default: break;
       }
     }
     simulation_params::samming_threshold=static_cast<uint8_t>(interface_size*(1-simulation_params::binding_threshold));
@@ -33,7 +53,8 @@ namespace {
   }
   
 }
-auto [binding_probabilities, q_dist] = initialize_PAR(); // xx, yy are double
+
+auto [binding_probabilities, q_dist] = initialize_PAR();
 
 void PrintBindingStrengths() {
   for(auto b : binding_probabilities)
@@ -56,21 +77,6 @@ void InterfaceAssembly::Mutation(BGenotype& genotype) {
 
 double InterfaceAssembly::InteractionMatrix(const interface_type face_1,const interface_type face_2) {
   return binding_probabilities[interface_model::SammingDistance(face_1,face_2)];
-}
-
-
-namespace simulation_params
-{
-  uint16_t dissociation_time=0;
-  uint8_t n_tiles=2,model_type=0,samming_threshold=10;
-  bool fixed_seed=false;
-  double temperature=0,binding_threshold=1,mu_prob=1;
-}
-namespace model_params
-{
-  uint16_t phenotype_builds=10;
-  double UND_threshold=0.2;
-  bool FIXED_TABLE=false;
 }
 
 
@@ -113,24 +119,26 @@ namespace interface_model
       interacting_indices.clear();
     }
 
+    pt->ExtendFitness();
     pt->RelabelPhenotypes(Phenotype_IDs,phenotype_interactions);
     std::map<Phenotype_ID,uint16_t> ID_counter=pt->PhenotypeFrequencies(Phenotype_IDs);
+    
     if(!ID_counter.empty())
       pid=std::max_element(ID_counter.begin(),ID_counter.end(),[] (const auto & p1, const auto & p2) {return p1.second < p2.second;})->first;
     else
       pid=NULL_pid;
 
+
     pid_interactions=phenotype_interactions[pid];    
     if(simulation_params::model_type==1)
       return pt->SingleFitness(pid,ID_counter[pid]);
-    if(simulation_params::model_type>=2) {
+    if(simulation_params::model_type==2) {
       for(auto kv : ID_counter) {
         if(kv.first!=NULL_pid && kv.first!=pid)
           pid_interactions.merge(phenotype_interactions[kv.first]);
       }
 
     }
-    
     return pt->GenotypeFitness(ID_counter);
   }
 

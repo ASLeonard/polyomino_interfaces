@@ -1,7 +1,7 @@
 #include "interface_simulator.hpp"
 #include <iostream>
 
-constexpr bool BINARY_WRITE_FILES=true;
+constexpr bool BINARY_WRITE_FILES=false;
 bool KILL_BACK_MUTATIONS=false;
 const std::string file_base_path="//scratch//asl47//Data_Runs//Bulk_Data//";
 const std::map<Phenotype_ID,uint8_t> phen_stages{{{0,0},0},{{10,0},4},{{1,0},1},{{2,0},2},{{4,0},2},{{4,1},3},{{8,0},3},{{12,0},4},{{16,0},4}};
@@ -25,6 +25,7 @@ void EvolutionRunner() {
     std::system((python_call+std::to_string(r)+python_params).c_str());
     /*!PYTHON CALL*/
   }
+  //python3 ~/Documents/PolyDev/polyomino_interfaces/scripts/interface_analysis.py "external" $Model $Thresh $T $Mu $Gamma $RUNS
 }
 void ReducedModelTable(FitnessPhenotypeTable* pt) {
   model_params::FIXED_TABLE=true;
@@ -73,7 +74,7 @@ void EvolvePopulation(std::string run_details) {
   std::string file_simulation_details=BINARY_WRITE_FILES ? run_details+".BIN" : "_Y"+std::to_string(simulation_params::binding_threshold)+"_T"+ std::to_string(simulation_params::temperature) +"_Mu"+std::to_string(simulation_params::mu_prob)+"_Gamma"+std::to_string(simulation_params::fitness_factor)+run_details+".txt";
     
   std::ofstream fout_strength(file_base_path+"Strengths"+file_simulation_details,BINARY_WRITE_FILES ? std::ios::binary :std::ios::out);
-  std::ofstream fout_phenotype(file_base_path+"PhenotypeTable"+file_simulation_details,BINARY_WRITE_FILES ? std::ios::binary :std::ios::out);  
+  std::ofstream fout_phenotype(file_base_path+"PhenotypeTable"+run_details+".BIN",std::ios::out);  
   std::ofstream fout_selection_history(file_base_path+"Selections"+file_simulation_details,BINARY_WRITE_FILES ? std::ios::binary :std::ios::out);    
   std::ofstream fout_phenotype_IDs(file_base_path+"PIDs"+file_simulation_details,BINARY_WRITE_FILES ? std::ios::binary :std::ios::out );
   
@@ -122,6 +123,7 @@ void EvolvePopulation(std::string run_details) {
   
   
   for(uint32_t generation=0;generation<simulation_params::generation_limit;++generation) { /*! MAIN EVOLUTION LOOP */
+
     if(simulation_params::model_type==2)
       dfl(generation);
 
