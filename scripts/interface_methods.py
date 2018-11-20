@@ -38,8 +38,12 @@ class Interactions(object):
           return "{} interactions".format(len(self.bonds))
          
 
-
-
+def T():
+     for i in range(20):
+          p=LPB(i,250)
+          q=np.sum(p,axis=2)
+          print(np.where(q==10)[0])
+          
 def LSHB(run,pop_size):
      return np.fromfile('/scratch/asl47/Data_Runs/Bulk_Data/Selections_Run{}.BIN'.format(run),dtype=np.uint16).reshape(-1,pop_size)
 
@@ -128,7 +132,8 @@ def RandomWalk(I_size=64,n_steps=1000,phi=0.5,S_star=0.6,analytic=False):
      
      if analytic:
           analytic_states=__getSteadyStates(N,phi,s_hats[-N:])[1]
-          return sum(s_hats[-N:]*analytic_states)
+          #return analytic_states
+          return sum(s_hats[-N:-N+7]*analytic_states[:7])
      
      states=np.array([1]+[0]*(N-1),dtype=float)
      progressive_states=[sum(s_hats[-N:]*states)]

@@ -252,6 +252,18 @@ def plotPhaseSpace(evo_data,low=-2,high=2,res=250):
 def plotPathways(evo_data,norm_style=''):
      evo_trans=evo_data.transitions
      failed=evo_data.jumps
+
+     for phen_from,count in failed[(10,0)].items():
+          if (12,0) in failed:
+               if phen_from in failed[(12,0)]:
+                    failed[(12,0)][phen_from]+=count
+               else:
+                    failed[(12,0)][phen_from]=count
+          else:
+               failed[(12,0)]={phen_from:count}
+                    
+                    
+     
      f, ax1= plt.subplots(1,1)
      #ax1.set_title(r'S*={}, T={},$\gamma$={}'.format(evo_data.S_star,evo_data.T,evo_data.gamma))
      

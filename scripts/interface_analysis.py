@@ -9,6 +9,7 @@ from functools import partial
 from collections import defaultdict,Counter
 from itertools import combinations,product,groupby
 from operator import itemgetter
+import math
 
 import warnings
 
@@ -107,10 +108,14 @@ def KAG(phenotypes_in,selections,interactions):
           gen_val=tree.gen
           descendents=tree.seq[0]
           while gen_val<(max_gen-1):
+               
                new_descendents=[]
                for descendent in descendents:
                     new_descendents.extend([child for child in np.where(selections[gen_val]==descendent)[0] if (np.array_equal(phenotypes_in[gen_val+1,child],tree.pID) and interactions[gen_val+1,child].bonds==tree.bonds)])
-               phenotypes[gen_val,descendents]=null_pid
+
+               if math.isinf(max_depth):
+                    phenotypes[gen_val,descendents]=null_pid
+               
                     
                if not new_descendents:
                     break
@@ -198,18 +203,24 @@ def KAG(phenotypes_in,selections,interactions):
 
 
      #phen_priority={(0,0):0,(1,0):1,(2,0):2,(4,0):2,(4,1):3,(8,0):3,(12,0):4,(16,0):4}
-     phen_priority={0:0,1:1,2:2,4:2,5:3,8:3,12:4,16:4}
+     phen_priority={0:0,1:1,2:2,4:2,5:3,8:3,10:4,12:4,16:4}
      sum_pid=np.sum(phenotypes_in,axis=2)
      max_phens=np.vectorize(phen_priority.__getitem__)(sum_pid)
-     
+     #print(np.where(sum_pid==10))
      #max_priority=np.max(max_phens,axis=1)
+     
      failed_jumps=defaultdict(int)
      for g_idx,c_idx in product(range(max_gen-2,-1,-1),range(pop_size)):
           pid_c=phenotypes[g_idx,c_idx]
+          
           pid_d=phenotypes_in[g_idx-1,selections[g_idx-1,c_idx]] if g_idx>0 else init_pid
-          if not np.array_equal(pid_c,null_pid) and not np.array_equal(pid_c,pid_d):
-              if np.count_nonzero(max_phens[g_idx]>=phen_priority[np.sum(pid_c)])<(pop_size//10) and not __growDescendentTree(Tree(pid_c,interactions[g_idx,c_idx].bonds,(-1,-1),g_idx,[[c_idx]]),2):
-                   failed_jumps[tuple(tuple(_) for _ in (pid_c,pid_d))]+=1
+          
+          if not np.array_equal(pid_c,null_pid) and not np.array_equal(pid_c,pid_d):                    
+               if np.count_nonzero(max_phens[g_idx]>=phen_priority[np.sum(pid_c)])<(pop_size//10) and __growDescendentTree(Tree(pid_c,interactions[g_idx,c_idx].bonds,(-1,-1),g_idx,[[c_idx]]),4) is None:
+                    #if np.sum(pid_c)==10:
+                    #     pid_c=(12,0)
+                    failed_jumps[tuple(tuple(_) for _ in (pid_c,pid_d))]+=1
+
      return (forest,dict(transitions),dict(failed_jumps))
      
 def treeBondStrengths(KAG,interactions):

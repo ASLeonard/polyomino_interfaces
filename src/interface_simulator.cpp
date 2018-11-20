@@ -4,7 +4,7 @@
 constexpr bool BINARY_WRITE_FILES=true;
 bool KILL_BACK_MUTATIONS=false;
 const std::string file_base_path="//scratch//asl47//Data_Runs//Bulk_Data//";
-const std::map<Phenotype_ID,uint8_t> phen_stages{{{0,0},0},{{10,0},0},{{1,0},1},{{2,0},2},{{4,0},2},{{4,1},3},{{8,0},3},{{12,0},4},{{16,0},4}};
+const std::map<Phenotype_ID,uint8_t> phen_stages{{{0,0},0},{{10,0},4},{{1,0},1},{{2,0},2},{{4,0},2},{{4,1},3},{{8,0},3},{{12,0},4},{{16,0},4}};
 
 namespace simulation_params {
   uint16_t population_size=100;
@@ -33,6 +33,7 @@ void ReducedModelTable(FitnessPhenotypeTable* pt) {
   pt->known_phenotypes[2].emplace_back(Phenotype{2,1, {1, 5}});
   pt->known_phenotypes[4].emplace_back(Phenotype{2,2, {1, 2, 4, 3}});
   pt->known_phenotypes[4].emplace_back(Phenotype{2,2, {1, 2, 4, 5}});
+  pt->known_phenotypes[10].emplace_back(Phenotype{4,3, {0, 1, 2, 0, 1, 5, 6, 2, 4, 3, 7, 3}});
   pt->known_phenotypes[8].emplace_back(Phenotype{4,4, {0, 0, 1, 0, 4, 5, 6, 0, 0, 8, 7, 2, 0, 3, 0, 0}});
   pt->known_phenotypes[12].emplace_back(Phenotype{4,4, {0, 1, 2, 0, 1, 5, 6, 2, 4, 8, 7, 3, 0, 4, 3, 0}});
   pt->known_phenotypes[16].emplace_back(Phenotype{4,4, {1, 2, 1, 2, 4, 5, 6, 3, 1, 8, 7, 2, 4, 3, 4, 3}});
@@ -43,6 +44,7 @@ void ReducedModelTable(FitnessPhenotypeTable* pt) {
   pt->phenotype_fitnesses[4].emplace_back(std::pow(base_multiplier,1));
   pt->phenotype_fitnesses[4].emplace_back(std::pow(base_multiplier,2));
   pt->phenotype_fitnesses[8].emplace_back(std::pow(base_multiplier,2));
+  pt->phenotype_fitnesses[10].emplace_back(0);
   pt->phenotype_fitnesses[12].emplace_back(std::pow(base_multiplier,3));
   pt->phenotype_fitnesses[16].emplace_back(std::pow(base_multiplier,3));
 }
@@ -134,13 +136,13 @@ void EvolvePopulation(std::string run_details) {
       prev_ev=evolving_genotype.pid;
       population_fitnesses[nth_genotype]=interface_model::PolyominoAssemblyOutcome(assembly_genotype,&pt,evolving_genotype.pid,pid_interactions);
 
-
       if((simulation_params::model_type==2 && assembly_genotype.size()/4 != simulation_params::n_tiles) || (KILL_BACK_MUTATIONS && prev_ev!=evolving_genotype.pid && phen_stages.at(prev_ev)>=phen_stages.at(evolving_genotype.pid))) {
         population_fitnesses[nth_genotype]=0;
         evolving_genotype.pid=NULL_pid;
         pid_interactions.clear();        
       }
       ++nth_genotype;
+
 
       if constexpr (BINARY_WRITE_FILES) {
         binary_pids.emplace_back(evolving_genotype.pid.first);
@@ -156,10 +158,6 @@ void EvolvePopulation(std::string run_details) {
         fout_phenotype_IDs << +evolving_genotype.pid.first <<" "<<+evolving_genotype.pid.second<<" ";
       }
     } /*! END GENOTYPE LOOP */
-
-    
-    
-    
 
     /*! SELECTION */
     uint16_t nth_repro=0;
