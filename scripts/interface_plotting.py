@@ -151,17 +151,17 @@ def plotExp(evo_data_struct):
      bond_ls={1:'-',2:':',3:'-.',4:'--'}
      c_ls={1:'c',2:'m',3:'w.',4:'k'}
      N_markers=10
-     MAX_G=200
+     MAX_G=300
      
      f,axarr=plt.subplots(2,3,sharey=True)
-     ax_d={(4,0):axarr[0,0],(4,1):axarr[0,1],(12,0):axarr[0,2],(2,0):axarr[1,0],(8,0):axarr[1,1],(16,0):axarr[1,2]}
+     ax_d={(4,0):axarr[0,0],(4,1):axarr[0,1],(12,0):axarr[1,2],(2,0):axarr[1,0],(8,0):axarr[1,1],(16,0):axarr[0,2]}
      null_exp=RandomWalk(64,None,.5,S_star,True)
      
      for phen,data in evo_data.items():
           plt.setp(ax_d[phen].spines.values(), color=phen_cols[phen],lw=(2 if phen[0]<10 else 1))
           if phen==(3,0) or phen==(12,1):
                continue
-          #ax_d[phen].axhline(null_exp,c='k',ls=':')
+ 
           ax_d[phen].axhline(S_star,c='k',ls='-',lw=0.75)
           max_len=min(200,max(len(vals) for vals in data.values()))
           ax_d[phen].plot(range(max_len+1),RandomWalk(64,max_len,mu*1./6,S_star,False),'r--')
@@ -169,11 +169,11 @@ def plotExp(evo_data_struct):
           for (bond,new),strs in data.items():
                if new not in ancestors[phen]:
                     continue
-               strs=strs[:MAX_G]
+               strs=strs#[:MAX_G]
                ax_d[phen].plot(range(len(strs)),strs,c=phen_cols[ancestors[phen][new]],marker=bond_marks[bond],markevery=max(1,len(strs)//N_markers),zorder=10,lw=.5)
                if evo_data_samp is not None:
                    for samp in evo_data_samp[phen][(bond,new)]:
-                        samp=samp[:MAX_G]
+                        samp=samp#[:MAX_G]
                         ax_d[phen].plot(range(len(samp)),samp,c=phen_cols[ancestors[phen][new]],alpha=0.15,lw=.5)
                VSS(PhenTable()[phen],ax_d[phen],(.4,.95),.2)
                

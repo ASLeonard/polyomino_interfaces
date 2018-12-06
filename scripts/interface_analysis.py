@@ -10,6 +10,7 @@ from collections import defaultdict,Counter
 from itertools import combinations,product,groupby
 from operator import itemgetter
 import math
+import glob
 
 import warnings
 
@@ -71,7 +72,7 @@ def collateAnalysis(S_star,t,mu,gamma,runs):
      return (N_runs,)+tuple(convertDoubleNestedDict(tr) for tr in (full_transition,failed_jumps)) + tuple(dict(res) for res in (average_evolutions,sample_evolutions))
      
 def convertRaggedArray(list_of_lists):
-     long_length=sorted([len(lis) for lis in list_of_lists],reverse=True)[len(list_of_lists)//2]
+     long_length=sorted([len(lis) for lis in list_of_lists],reverse=True)[0]
      rect_arr=np.empty((len(list_of_lists),long_length))
      for i,strs in enumerate(list_of_lists):
           rect_arr[i]=strs[:long_length]+[np.nan]*(long_length-len(strs[:long_length]))
@@ -79,12 +80,14 @@ def convertRaggedArray(list_of_lists):
 
 def analysePhylogenetics(run,params,full_pIDs=False):
      s,p,st,phen_table=LoadAll(run,params)
+     #print(p[0])
      ret_val=KAG(p,s,st)
      if not ret_val:
           return None
      transitions=ret_val[1]
      failed_transitions=ret_val[2]
      bond_data=treeBondStrengths(ret_val[0],st)
+     #print(bond_data.keys())
      if full_pIDs:
           transitions={(phen_table[k[0]],phen_table[k[1]]):cnt for k,cnt in transitions.items()}
           failed_transitions={(phen_table[k[0]],phen_table[k[1]]):cnt for k,cnt in failed_transitions.items()}
@@ -108,49 +111,52 @@ def KAG(phenotypes_in,selections,interactions):
      
      forest,temp_forest=[],[]
      transitions=defaultdict(int)
-
+     
      def __growDescendentTree(tree,max_depth=float('inf')):
           gen_val=tree.gen
           descendents=tree.seq[0]
+          
+          def __valid_descendent(gen_idx,kid):
+               return (np.array_equal(phenotypes_in[gen_idx+1,kid],tree.pID) and interactions[gen_idx+1,kid].bonds==tree.bonds)
+          
           while gen_val<(max_gen-1):
-               
-               new_descendents=[]
-               for descendent in descendents:
-                    new_descendents.extend([child for child in np.where(selections[gen_val]==descendent)[0] if (np.array_equal(phenotypes_in[gen_val+1,child],tree.pID) and interactions[gen_val+1,child].bonds==tree.bonds)])
-
+               new_descendents=[child for descendent in descendents for child in np.where(selections[gen_val]==descendent)[0] if __valid_descendent(gen_val,child)]
+                    
                if math.isinf(max_depth):
                     phenotypes[gen_val,descendents]=null_pid
-                                   
+               elif (gen_val-tree.gen)>=max_depth:
+                    return True
+               
                if not new_descendents:
                     break
-               if (gen_val-tree.gen)>=max_depth:
-                    return True
+               
                descendents=new_descendents
                tree.seq.append(descendents)
                gen_val+=1
           else:
-               phenotypes[gen_val,descendents]=null_pid
+               if math.isinf(max_depth):
+                    phenotypes[gen_val,descendents]=null_pid
+               elif (gen_val-tree.gen)>=max_depth:
+                    return True
                               
-     def __addBranch():
-          bond_ref=interactions[g_idx,c_idx].bonds
-          if len(bond_ref)<len(interactions[g_idx-1,p_idx].bonds):
-               return True;
-          pid_ref=phenotypes_in[g_idx,c_idx]
+     def __addBranch():        
           if g_idx:
+               if len(bond_ref)<len(interactions[g_idx-1,p_idx].bonds):
+                    return False;
                new_bond=list(set(bond_ref)-set(interactions[g_idx-1,p_idx].bonds))
-               transitions[tuple(tuple(_) for _ in (pid_ref,phenotypes_in[g_idx-1,p_idx]))]+=1
+               par_ref=phenotypes_in[g_idx-1,p_idx]
+
           else:
                new_bond=bond_ref
-               transitions[tuple(tuple(_) for _ in (pid_ref,init_pid))]+=1
-          try:
-               temp_forest.append((True,Tree(pid_ref,bond_ref,new_bond[0],g_idx,[[c_idx]])))
-          except:
-               print(g_idx,c_idx)
-               print(pid_ref)
-               print(bond_ref)
-               print(interactions[g_idx-1,p_idx].bonds)
-               print(len(new_bond))
-          return True if len(new_bond)==1 else False
+               par_ref=init_pid
+               
+          transitions[tuple(tuple(_) for _ in (pid_ref,par_ref))]+=1
+
+          if len(new_bond)!=1:
+               return False
+          else:
+               temp_forest.append((True,Tree(pid_ref.copy(),bond_ref,new_bond[0],g_idx,[[c_idx]])))
+               return True
                
      for C_INDEX in range(pop_size):
           if np.array_equal(phenotypes[max_gen-1,C_INDEX],null_pid):
@@ -159,7 +165,7 @@ def KAG(phenotypes_in,selections,interactions):
           c_idx=C_INDEX
           g_idx=max_gen-1
           p_idx=selections[g_idx-1,c_idx]
-          pid_ref=phenotypes[max_gen-1,c_idx]
+          pid_ref=phenotypes[g_idx,c_idx]
           bond_ref=interactions[g_idx,c_idx].bonds
           
           while g_idx>0:
@@ -172,7 +178,7 @@ def KAG(phenotypes_in,selections,interactions):
                          break
                
                elif not np.array_equal(phenotypes[g_idx-1,p_idx],pid_ref):
-                    if not __addBranch():
+                    if not __addBranch():                         
                          return None
                     bond_ref=interactions[g_idx-1,p_idx].bonds
                     pid_ref=phenotypes[g_idx-1,p_idx]
@@ -193,18 +199,11 @@ def KAG(phenotypes_in,selections,interactions):
                __growDescendentTree(tree)
                if alive:
                     forest.append(tree)
-
-
-     
-     #phen_priority={(0,0):0,(1,0):1,(2,0):2,(4,0):2,(4,1):3,(8,0):3,(12,0):4,(16,0):4}
-     #phen_priority={0:0,1:1,2:2,4:2,5:3,8:3,10:4,12:4,16:4}
-     #sum_pid=np.sum(phenotypes_in,axis=2)
-     #max_phens=np.vectorize(phen_priority.__getitem__)(sum_pid)
+                    
      evo_stage=np.vectorize(lambda x: len(x.bonds))(interactions)
-
      
-     POPULATION_FIXATION=pop_size//10
-     SURVIVAL_DEPTH=4
+     POPULATION_FIXATION=pop_size//20
+     SURVIVAL_DEPTH=5
      failed_jumps=defaultdict(int)
      for g_idx,c_idx in product(range(max_gen-2,-1,-1),range(pop_size)):
           pid_c=phenotypes[g_idx,c_idx]
@@ -216,9 +215,9 @@ def KAG(phenotypes_in,selections,interactions):
                if np.count_nonzero(evo_stage[g_idx]>=len(interactions[g_idx,c_idx].bonds))>POPULATION_FIXATION:
                     continue
                
-               if __growDescendentTree(Tree(pid_c,interactions[g_idx,c_idx].bonds,(-1,-1),g_idx,[[c_idx]]),SURVIVAL_DEPTH) is None:
+               if not __growDescendentTree(Tree(pid_c,interactions[g_idx,c_idx].bonds,(-1,-1),g_idx,[[c_idx]]),SURVIVAL_DEPTH):
                     failed_jumps[tuple(tuple(_) for _ in (pid_c,pid_d))]+=1
-
+     
      return (forest,dict(transitions),dict(failed_jumps))
      
 def treeBondStrengths(KAG,interactions):
@@ -378,6 +377,8 @@ def main(argv):
           if model_type==1 or model_type==0:
                with open('Mu{2}Y{0}T{1}F{3}O{4}.pkl'.format(*format_params+(run,)),'wb') as f:
                     dump(analysePhylogenetics(run,run_params,model_type==0),f)
+               for used_file in glob.glob('*Run{}*'.format(run)):
+                    os.remove(used_file)
           elif model_type==2:
                np.savez_compressed('Mu{2}Y{0}T{1}F{3}O{4}'.format(*format_params+(run,)),analyseHomogeneousPopulation(run,run_params))
           elif model_type==3:

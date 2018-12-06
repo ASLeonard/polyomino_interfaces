@@ -1,7 +1,7 @@
 #include "interface_simulator.hpp"
 #include <iostream>
 
-constexpr bool BINARY_WRITE_FILES=false;
+constexpr bool BINARY_WRITE_FILES=true;
 bool KILL_BACK_MUTATIONS=false;
 const std::string file_base_path="//scratch//asl47//Data_Runs//Bulk_Data//";
 const std::map<Phenotype_ID,uint8_t> phen_stages{{{0,0},0},{{10,0},4},{{1,0},1},{{2,0},2},{{4,0},2},{{4,1},3},{{8,0},3},{{12,0},4},{{16,0},4}};
@@ -12,18 +12,23 @@ namespace simulation_params {
 }
 
 void EvolutionRunner() {
-  const uint16_t N_runs=simulation_params::independent_trials;
-  const std::string py_analysis_mode="internal "+std::to_string(simulation_params::model_type); 
-  const std::string python_call="python3 ~/Documents/PolyDev/polyomino_interfaces/scripts/interface_analysis.py "+py_analysis_mode+" "+std::to_string(BINARY_WRITE_FILES)+" ";
+  /*!PYTHON INFORMATION*/
+  const std::string py_exec = "python3 ";
+  const std::string py_loc = "~/Documents/PolyDev/polyomino_interfaces/scripts/interface_analysis.py ";
+  const std::string py_mode="internal "+std::to_string(simulation_params::model_type);
+  
+  const std::string py_CALL=py_exec + py_loc + py_mode + " "+std::to_string(BINARY_WRITE_FILES)+" ";
   const std::string python_params=" "+std::to_string(simulation_params::binding_threshold)+" "+std::to_string(simulation_params::temperature)+" "+std::to_string(simulation_params::mu_prob)+" "+std::to_string(simulation_params::fitness_factor)+" "+std::to_string(simulation_params::population_size);
 
-  
+  const uint16_t N_runs=simulation_params::independent_trials;
 #pragma omp parallel for schedule(dynamic) 
   for(uint16_t r=0;r < N_runs;++r) {
     EvolvePopulation("_Run"+std::to_string(r+simulation_params::run_offset));
     /*!PYTHON CALL*/
-    std::system((python_call+std::to_string(r)+python_params).c_str());
+    std::system((py_CALL+std::to_string(r)+python_params).c_str());
     /*!PYTHON CALL*/
+
+    
   }
   //python3 ~/Documents/PolyDev/polyomino_interfaces/scripts/interface_analysis.py "external" $Model $Thresh $T $Mu $Gamma $RUNS
 }

@@ -134,7 +134,7 @@ def RandomWalk(I_size=64,n_steps=1000,phi=0.5,S_star=0.6,analytic=False):
      if analytic:
           analytic_states=__getSteadyStates(N,phi,s_hats[-N:])[1]
           #return analytic_states
-          return sum(s_hats[-N:-N+7]*analytic_states[:7])
+          return sum(s_hats[-N:]*analytic_states)
      
      states=np.array([1]+[0]*(N-1),dtype=float)
      progressive_states=[sum(s_hats[-N:]*states)]
