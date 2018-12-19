@@ -151,7 +151,7 @@ def KAG(phenotypes_in,selections,interactions):
                par_ref=init_pid
                
           transitions[tuple(tuple(_) for _ in (pid_ref,par_ref))]+=1
-
+          new_bond=[new_bond[0]]
           if len(new_bond)!=1:
                return False
           else:
@@ -312,10 +312,11 @@ def allUniqueBonds(bonds):
 def writeIt():
      np.savez_compressed('/rscratch/asl47/Pickles/test.npy',[a,b])
      
-def analyseHomogeneousPopulation(run,params):
+def analyseHomogeneousPopulation(run,params,temperature):
      selections,phenotypes,st,phen_table=LoadAll(run,params)
      
      max_gen,pop_size=selections.shape
+
      param_trajectory=[]
      for generation in range(max_gen):
           params=defaultdict(list)
@@ -326,11 +327,11 @@ def analyseHomogeneousPopulation(run,params):
                     continue
                try:
                     bonds={getBondType(bond,st[generation,species].bonds):strength for bond,strength in st[generation,species]}
-
-                    params['a'].append((bonds[4]/bonds[2])**t)
-                    params['b'].append((bonds[2]/bonds[3])**t)
+                    params['a'].append((bonds[4]/bonds[2])**temperature)
+                    params['b'].append((bonds[2]/bonds[3])**temperature)
                except:
-                    return None
+                    #print("missed one at ",species,generation)
+                    pass
           param_trajectory.append([np.mean(params['a']),np.mean(params['b'])])
      return np.asarray(param_trajectory)
 
@@ -380,7 +381,7 @@ def main(argv):
                for used_file in glob.glob('*Run{}*'.format(run)):
                     os.remove(used_file)
           elif model_type==2:
-               np.savez_compressed('Mu{2}Y{0}T{1}F{3}O{4}'.format(*format_params+(run,)),analyseHomogeneousPopulation(run,run_params))
+               np.savez_compressed('Mu{2}Y{0}T{1}F{3}O{4}'.format(*format_params+(run,)),analyseHomogeneousPopulation(run,run_params,format_params[1]))
           elif model_type==3:
                np.savez_compressed('Mu{2}Y{0}T{1}F{3}O{4}'.format(*format_params+(run,)),analyseDimers(run,run_params))
           else:

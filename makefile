@@ -25,7 +25,7 @@ CXXFLAGS    := -std=gnu++17 -Wall -Wextra -pedantic -pipe -march=haswell -flto -
 ifndef DEBUG
 CXXFLAGS += -O3 -fopenmp
 else
-CXXFLAGS += -pg
+CXXFLAGS += -pg -ggdb
 endif
 
 INC         := -I$(INCDIR) -I$(LIBDIR)/$(INCDIR)
@@ -73,5 +73,4 @@ check-and-reinit-submodules:
 	@if git submodule status | egrep -q '^[-]|^[+]' ; then \
 		echo "INFO: Need to reinitialize git submodules"; \
 		git submodule update --init; \
-
 	fi

@@ -33,7 +33,7 @@ void EvolutionRunner() {
   //python3 ~/Documents/PolyDev/polyomino_interfaces/scripts/interface_analysis.py "external" $Model $Thresh $T $Mu $Gamma $RUNS
 }
 void ReducedModelTable(FitnessPhenotypeTable* pt) {
-  model_params::FIXED_TABLE=true;
+  pt->FIXED_TABLE=true;
   KILL_BACK_MUTATIONS=true;
   pt->known_phenotypes[1].emplace_back(Phenotype{1,1, {1}});
   pt->known_phenotypes[2].emplace_back(Phenotype{2,1, {1, 5}});
@@ -56,8 +56,8 @@ void ReducedModelTable(FitnessPhenotypeTable* pt) {
 }
 
 void FinalModelTable(FitnessPhenotypeTable* pt) {
-  model_params::FIXED_TABLE=true;
-  KILL_BACK_MUTATIONS=true;
+  pt->FIXED_TABLE=true;
+  KILL_BACK_MUTATIONS=false;
   pt->known_phenotypes[4].emplace_back(Phenotype{2,2, {1, 2, 4, 3}});
   pt->known_phenotypes[12].emplace_back(Phenotype{4,4, {0, 1, 2, 0, 1, 5, 6, 2, 4, 8, 7, 3, 0, 4, 3, 0}});
   pt->known_phenotypes[10].emplace_back(Phenotype{4,3, {0, 1, 2, 0, 1, 5, 6, 2, 4, 3, 7, 3}});
@@ -66,13 +66,6 @@ void FinalModelTable(FitnessPhenotypeTable* pt) {
   pt->phenotype_fitnesses[10].emplace_back(0);
 }
 
-void DimerModelTable(FitnessPhenotypeTable* pt) {
-  model_params::FIXED_TABLE=true;
-  pt->known_phenotypes[2].emplace_back(Phenotype{2,1, {1,3}});
-  pt->known_phenotypes[2].emplace_back(Phenotype{2,1, {1,5}});
-  pt->phenotype_fitnesses[2].emplace_back(1);
-  pt->phenotype_fitnesses[2].emplace_back(1);
-}
 
 
 void EvolvePopulation(std::string run_details) {
@@ -89,17 +82,8 @@ void EvolvePopulation(std::string run_details) {
   
   FitnessPhenotypeTable pt = FitnessPhenotypeTable();
   DynamicFitnessLandscape dfl(&pt,simulation_params::fitness_period,simulation_params::fitness_rise);
-  
-  switch(simulation_params::model_type) {
-  case 3: DimerModelTable(&pt);
-    {
-      BGenotype ref_genotype=GenerateTargetGraph({{0,{0}}},4);
-      ref_genotype.insert(ref_genotype.end(),ref_genotype.begin(),ref_genotype.end());
-      for(auto& species : evolving_population)
-        species.genotype=ref_genotype;
-    }
-    break;
-      
+
+  switch(simulation_params::model_type) {      
   case 2: FinalModelTable(&pt);
     {
       const BGenotype ref_genotype=GenerateTargetGraph({{1,{0,7}},{4,{5}}},simulation_params::n_tiles*4);
@@ -108,14 +92,14 @@ void EvolvePopulation(std::string run_details) {
     }
     break;
   case 1: ReducedModelTable(&pt);
-    [[fallthrough]];
+      [[fallthrough]];
   default:
     for(auto& species : evolving_population)
       RandomiseGenotype(species.genotype);
     break;
   }
   
-  std::set<interaction_pair> pid_interactions;
+  std::set<InteractionPair> pid_interactions;
   BGenotype assembly_genotype;
   Phenotype_ID prev_ev;
   std::vector<uint8_t> binary_pids,binary_strengths;
@@ -129,26 +113,35 @@ void EvolvePopulation(std::string run_details) {
   
   for(uint32_t generation=0;generation<simulation_params::generation_limit;++generation) { /*! MAIN EVOLUTION LOOP */
 
-    if(simulation_params::model_type==2)
+    if(simulation_params::model_type==2) {
       dfl(generation);
+      //std::cout<<"12: "<<pt.phenotype_fitnesses[12][0]<<" /10: "<<pt.phenotype_fitnesses[10][0]<<std::endl;
+    }
 
     uint16_t nth_genotype=0;
     for(PopulationGenotype& evolving_genotype : evolving_population) { /*! GENOTYPE LOOP */
-      InterfaceAssembly::Mutation(evolving_genotype.genotype);      
+      
+      InterfaceAssembly::Mutation(evolving_genotype.genotype);
+
      
       if(simulation_params::model_type==1)
         EnsureNeutralDisconnections(evolving_genotype.genotype);         
-            
+      const std::vector<std::pair<InteractionPair,double> > edges = InterfaceAssembly::GetActiveInterfaces(evolving_genotype.genotype);
       assembly_genotype=evolving_genotype.genotype;
       prev_ev=evolving_genotype.pid;
-      population_fitnesses[nth_genotype]=interface_model::PolyominoAssemblyOutcome(assembly_genotype,&pt,evolving_genotype.pid,pid_interactions);
 
-      if((simulation_params::model_type==2 && assembly_genotype.size()/4 != simulation_params::n_tiles) || (KILL_BACK_MUTATIONS && prev_ev!=evolving_genotype.pid && phen_stages.at(prev_ev)>=phen_stages.at(evolving_genotype.pid))) {
+
+      population_fitnesses[nth_genotype]=interface_model::PolyominoAssemblyOutcome(assembly_genotype,&pt,evolving_genotype.pid,pid_interactions);
+      
+      //std::cout<<+evolving_genotype.pid.first<<","<<+evolving_genotype.pid.second<<std::endl;
+      
+      if((simulation_params::model_type==12 && assembly_genotype.size()/4 != simulation_params::n_tiles) || (KILL_BACK_MUTATIONS && prev_ev!=evolving_genotype.pid && phen_stages.at(prev_ev)>=phen_stages.at(evolving_genotype.pid))) {
         population_fitnesses[nth_genotype]=0;
         evolving_genotype.pid=NULL_pid;
         pid_interactions.clear();        
       }
       ++nth_genotype;
+
 
 
       if constexpr (BINARY_WRITE_FILES) {
@@ -193,8 +186,7 @@ void EvolvePopulation(std::string run_details) {
     }
     
   } /* END EVOLUTION LOOP */
-  if(!model_params::FIXED_TABLE)
-    pt.PrintTable(fout_phenotype);
+  pt.PrintTable(fout_phenotype);
   
 }
 
