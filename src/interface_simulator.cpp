@@ -232,8 +232,8 @@ void SetRuntimeConfigurations(int argc, char* argv[]) {
       case 'N': simulation_params::n_tiles=std::stoi(argv[arg+1]);break;
       case 'P': simulation_params::population_size=std::stoi(argv[arg+1]);break;
       case 'K': simulation_params::generation_limit=std::stoi(argv[arg+1]);break;
-      case 'B': model_params::phenotype_builds=std::stoi(argv[arg+1]);break;
-      case 'X': model_params::UND_threshold=std::stod(argv[arg+1]);break;
+      case 'B': FitnessPhenotypeTable::phenotype_builds=std::stoi(argv[arg+1]);break;
+      case 'X': FitnessPhenotypeTable::UND_threshold=std::stod(argv[arg+1]);break;
 
         /*! run configurations */
       case 'D': simulation_params::independent_trials=std::stoi(argv[arg+1]);break;
@@ -247,7 +247,7 @@ void SetRuntimeConfigurations(int argc, char* argv[]) {
       case 'Y':break;// simulation_params::binding_threshold=std::stod(argv[arg+1]);break;
       case 'T':break;// simulation_params::temperature=std::stod(argv[arg+1]);break;
         
-      case 'S': simulation_params::fixed_seed=std::stoi(argv[arg+1])>0;break;
+      case 'S': InterfaceAssembly::free_seed=std::stoi(argv[arg+1])>0;break;
       case 'A': simulation_params::model_type=std::stoi(argv[arg+1]);break;   
       case 'H': simulation_params::dissociation_time=std::stoi(argv[arg+1]);break;
         

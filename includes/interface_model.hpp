@@ -27,7 +27,6 @@ namespace simulation_params
 {
   extern uint8_t model_type,n_tiles,samming_threshold;
   extern uint16_t dissociation_time;
-  extern bool fixed_seed;
   extern double temperature,binding_threshold,mu_prob;
 }
 

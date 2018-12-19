@@ -5,16 +5,8 @@ namespace simulation_params
 {
   uint16_t dissociation_time=0;
   uint8_t n_tiles=2,model_type=0,samming_threshold=10;
-  bool fixed_seed=false;
   double temperature=0,binding_threshold=1,mu_prob=1;
 }
-namespace model_params
-{
-  uint16_t phenotype_builds=10;
-  double UND_threshold=0.2;
-}
-bool Phenotype::FREE_POLYOMINO=true;
-uint8_t Phenotype::DETERMINISM_LEVEL=3;
 
 thread_local std::mt19937 RNG_Engine(std::random_device{}());
 
@@ -26,10 +18,6 @@ namespace {
     std::ifstream fin("configs.ini");
     char param_name;
     std::string param_value;
-    fin >> param_name;
-    Phenotype::FREE_POLYOMINO=static_cast<uint8_t>(param_name-'0');
-    fin >> param_name;
-    Phenotype::DETERMINISM_LEVEL=static_cast<uint8_t>(param_name-'0');
     while ( fin >> param_name >> param_value ) {
       switch(param_name) {
       case 'M': simulation_params::mu_prob=std::stod(param_value);break;
@@ -91,18 +79,17 @@ namespace interface_model
 
   double PolyominoAssemblyOutcome(BGenotype& binary_genome,FitnessPhenotypeTable* pt,Phenotype_ID& pid,std::set<InteractionPair>& pid_interactions) {
     InterfaceAssembly::StripNoncodingGenotype(binary_genome);
-    size_t UB_size=static_cast<size_t>(.75*binary_genome.size()*binary_genome.size());
     const std::vector<std::pair<InteractionPair,double> > edges = InterfaceAssembly::GetActiveInterfaces(binary_genome);
 
     std::vector<int8_t> assembly_information;
     Phenotype phen;
     std::vector<Phenotype_ID> Phenotype_IDs;
-    Phenotype_IDs.reserve(model_params::phenotype_builds);
+    Phenotype_IDs.reserve(pt->phenotype_builds);
     std::set<InteractionPair > interacting_indices;
     std::map<Phenotype_ID, std::set<InteractionPair> > phenotype_interactions;
 
-    for(uint16_t nth=0;nth<model_params::phenotype_builds;++nth) {
-      assembly_information=InterfaceAssembly::AssemblePolyomino(edges,simulation_params::fixed_seed ? 1 : 1+4*std::uniform_int_distribution<uint8_t>(0,binary_genome.size()/4-1)(RNG_Engine),UB_size,interacting_indices);
+    for(uint16_t nth=0;nth<pt->phenotype_builds;++nth) {
+      assembly_information=InterfaceAssembly::AssemblePolyomino(edges,interacting_indices);
       if(assembly_information.size()>0) {
         phen=GetPhenotypeFromGrid(assembly_information);
         Phenotype_IDs.emplace_back(pt->GetPhenotypeID(phen));
