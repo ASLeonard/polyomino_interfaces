@@ -1,7 +1,7 @@
 #include "interface_simulator.hpp"
 #include <iostream>
 
-constexpr bool BINARY_WRITE_FILES=true;
+constexpr bool BINARY_WRITE_FILES=false;
 bool KILL_BACK_MUTATIONS=false;
 const std::string file_base_path="//scratch//asl47//Data_Runs//Bulk_Data//";
 const std::map<Phenotype_ID,uint8_t> phen_stages{{{0,0},0},{{10,0},4},{{1,0},1},{{2,0},2},{{4,0},2},{{4,1},3},{{8,0},3},{{12,0},4},{{16,0},4}};
@@ -95,7 +95,7 @@ void EvolvePopulation(std::string run_details) {
       [[fallthrough]];
   default:
     for(auto& species : evolving_population)
-      RandomiseGenotype(species.genotype);
+      InterfaceAssembly::RandomiseGenotype(species.genotype);
     break;
   }
   
@@ -210,7 +210,7 @@ int main(int argc, char* argv[]) {
     EvolutionRunner();
     break;
   case '?':
-    PrintBindingStrengths();
+    InterfaceAssembly::PrintBindingStrengths();
     break;
   case 'H':
   default:
@@ -243,9 +243,9 @@ void SetRuntimeConfigurations(int argc, char* argv[]) {
         /*! simulation specific */
         
         //DONE IN INIT FILE
-      case 'M':break;// simulation_params::mu_prob=std::stod(argv[arg+1]);break;
-      case 'Y':break;// simulation_params::binding_threshold=std::stod(argv[arg+1]);break;
-      case 'T':break;// simulation_params::temperature=std::stod(argv[arg+1]);break;
+      case 'M': simulation_params::mu_prob=std::stod(argv[arg+1]);break;
+      case 'Y': simulation_params::binding_threshold=std::stod(argv[arg+1]);break;
+      case 'T': simulation_params::temperature=std::stod(argv[arg+1]);break;
         
       case 'S': InterfaceAssembly::free_seed=std::stoi(argv[arg+1])>0;break;
       case 'A': simulation_params::model_type=std::stoi(argv[arg+1]);break;   
@@ -260,7 +260,7 @@ void SetRuntimeConfigurations(int argc, char* argv[]) {
       default: std::cout<<"Unknown Parameter Flag: "<<argv[arg][1]<<std::endl;
       }
     }
-
+  InterfaceAssembly::SetBindingStrengths();
   }
 }
 

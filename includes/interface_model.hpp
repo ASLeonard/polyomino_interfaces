@@ -11,16 +11,23 @@ constexpr uint8_t interface_size=CHAR_BIT*sizeof(interface_type);
 using BGenotype = std::vector<interface_type>;
 
 class InterfaceAssembly : public PolyominoAssembly<InterfaceAssembly> {
+
+protected:
+  inline static std::array<double,interface_size+1> binding_probabilities{};
   
-public:  
+public:
+
+  inline static thread_local auto GenRandomSite = []() {return std::uniform_int_distribution<interface_type>()(RNG_Engine);};
+  
   static double InteractionMatrix(const interface_type, const interface_type);
   static void Mutation(BGenotype& genotype);
+
+  static void SetBindingStrengths();
+  static void PrintBindingStrengths();
   
 };
 
 
-void PrintBindingStrengths();
-//extern std::normal_distribution<double> normal_dist;
 
 
 namespace simulation_params
@@ -36,10 +43,9 @@ namespace interface_model
   uint8_t SammingDistance(interface_type face1,interface_type face2);
 
   /* ASSEMBLY */
-  double PolyominoAssemblyOutcome(BGenotype& binary_genome, FitnessPhenotypeTable* pt,Phenotype_ID& pid,std::set<InteractionPair>& pid_interactions);
-  
+  double PolyominoAssemblyOutcome(BGenotype& binary_genome, FitnessPhenotypeTable* pt,Phenotype_ID& pid,std::set<InteractionPair>& pid_interactions); 
 }
-void RandomiseGenotype(BGenotype& genotype);
+//void RandomiseGenotype(BGenotype& genotype);
 
 BGenotype GenerateTargetGraph(std::map<uint8_t,std::vector<uint8_t>> edge_map,uint8_t graph_size);
 void EnsureNeutralDisconnections(BGenotype& genotype);
