@@ -72,7 +72,7 @@ void EvolvePopulation(std::string run_details) {
   std::string file_simulation_details=BINARY_WRITE_FILES ? run_details+".BIN" : "_Y"+std::to_string(simulation_params::binding_threshold)+"_T"+ std::to_string(simulation_params::temperature) +"_Mu"+std::to_string(simulation_params::mu_prob)+"_Gamma"+std::to_string(simulation_params::fitness_factor)+run_details+".txt";
     
   std::ofstream fout_strength(file_base_path+"Strengths"+file_simulation_details,BINARY_WRITE_FILES ? std::ios::binary :std::ios::out);
-  std::ofstream fout_phenotype(file_base_path+"PhenotypeTable"+run_details+".BIN",std::ios::out);  
+  std::string fname_phenotype(file_base_path+"PhenotypeTable"+run_details+".txt");  
   std::ofstream fout_selection_history(file_base_path+"Selections"+file_simulation_details,BINARY_WRITE_FILES ? std::ios::binary :std::ios::out);    
   std::ofstream fout_phenotype_IDs(file_base_path+"PIDs"+file_simulation_details,BINARY_WRITE_FILES ? std::ios::binary :std::ios::out );
   
@@ -148,7 +148,7 @@ void EvolvePopulation(std::string run_details) {
         binary_pids.emplace_back(evolving_genotype.pid.first);
         binary_pids.emplace_back(evolving_genotype.pid.second);
         for(auto x : pid_interactions)
-          binary_strengths.insert(binary_strengths.end(),{x.first,x.second,interface_model::SammingDistance(assembly_genotype[x.first],assembly_genotype[x.second])});
+          binary_strengths.insert(binary_strengths.end(),{static_cast<uint8_t>(x.first),static_cast<uint8_t>(x.second),interface_model::SammingDistance(assembly_genotype[x.first],assembly_genotype[x.second])});
         binary_strengths.emplace_back(255);
       }
       else {
@@ -186,7 +186,7 @@ void EvolvePopulation(std::string run_details) {
     }
     
   } /* END EVOLUTION LOOP */
-  pt.PrintTable(fout_phenotype);
+  pt.PrintTable(fname_phenotype);
   
 }
 

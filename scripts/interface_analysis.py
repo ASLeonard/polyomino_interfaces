@@ -18,7 +18,7 @@ import warnings
 null_pid,init_pid=np.array([0,0],dtype=np.uint8),np.array([1,0],dtype=np.uint8)
 
 def parallelAnalysis(S_star,t,mu,gamma,runs,offset=0,run_code='F'):
-     setBasePath('scratch')
+     setBasePath('')
      chosen_function=analysePhylogenetics if run_code=='F' else analyseHomogeneousPopulation
      pool = Pool()
      data_struct=pool.map(partial(chosen_function, S_star,t,mu,gamma), range(offset,offset+runs)) 
@@ -309,9 +309,7 @@ def allUniqueBonds(bonds):
      seen = set()
      return not any(i in seen or seen.add(i) for i in list(sum(bonds, ())))
 
-def writeIt():
-     np.savez_compressed('/rscratch/asl47/Pickles/test.npy',[a,b])
-     
+    
 def analyseHomogeneousPopulation(run,params,temperature):
      selections,phenotypes,st,phen_table=LoadAll(run,params)
      
@@ -389,7 +387,7 @@ def main(argv):
 
      elif argv[1]=='external':
           format_params=tuple(float(i) for i in argv[3:7])
-          file_pth='/rscratch/asl47/Pickles/Y{}T{}Mu{}F{}'.format(*format_params)
+          file_pth='Y{}T{}Mu{}F{}'.format(*format_params)
           run_gen=range(int(argv[7]))
           if model_type==1 or model_type==0:
                with open(file_pth+'.pkl', 'wb') as f:
