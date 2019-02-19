@@ -3,11 +3,11 @@
 
 namespace simulation_params
 {
-  extern uint16_t population_size;
+  PopulationSize population_size=100;
   uint16_t fitness_period=100;
   uint32_t generation_limit=100,independent_trials=1,run_offset=0;
   bool random_initilisation=true;
-  double fitness_jump=2,fitness_rise=10;
+  double fitness_jump=2,fitness_rise=10, fitness_factor=1;
 }
 
 
@@ -24,7 +24,6 @@ void FinalModelTable(FitnessPhenotypeTable* pt);
 void EvolvePopulation(std::string run_details); 
 void EvolutionRunner();
 
-//std::vector<uint16_t> RouletteWheelSelection(std::vector<double>& fitnesses);
 
 void SetRuntimeConfigurations(int argc, char* argv[]);
 
@@ -47,8 +46,6 @@ private:
   uint16_t period;
   double sharpness;
 };
-
-
 
 template<typename T, typename A>
 void BinaryWriter(std::ofstream& bfile,const std::vector<T,A>& vec) {

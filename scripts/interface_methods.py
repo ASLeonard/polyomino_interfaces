@@ -37,13 +37,7 @@ class Interactions(object):
      def __repr__(self):
           return "{} interactions".format(len(self.bonds))
          
-
-def T():
-     for i in range(20):
-          p=LPB(i,250)
-          q=np.sum(p,axis=2)
-          print(np.where(q==10)[0])
-          
+       
 def LSHB(run,pop_size):
      return np.fromfile(BASE_PATH.format('Selections',run),dtype=np.uint16).reshape(-1,pop_size)
 
@@ -165,20 +159,20 @@ def __getSteadyStates(N_states,mu,val):
      ve=eigvec.T[np.argmax(eigval)]
      return va,ve/sum(ve)
 
-def good2(a,b):
+def HetTet(a,b):
      return 1/(1+2*b)*(2*b+2/(a+2)*(1+a*1/(a+2)))
      
-def good1(a,b):
-     return 2*b/(1+2*b)*good2(a,b) + 1/(1+2*b)*(good2(a,b)/(2+a)+2/(a+2)**2 +2*a/(2+a)**3+a*1/(2+a)**2*good2(a,b)+2*a/(2+a)**3)
+def Branching1(a,b):
+     return 2*b/(1+2*b)*HetTet(a,b) + 1/(1+2*b)*(HetTet(a,b)/(2+a)+2/(a+2)**2 +2*a/(2+a)**3+a*1/(2+a)**2*HetTet(a,b)+2*a/(2+a)**3)
 
-def goodStar(a,b):
-     return 1/(a+2)*good1(a,b)*(1+1*a/(2+a)) + (1/(2+a))**2 *good2(a,b) *(1+2*a/(2+a))+2/((2+a)**3)*(1+3*a/(2+a))
+def Branching2(a,b):
+     return 1/(a+2)*Branching1(a,b)*(1+1*a/(2+a)) + (1/(2+a))**2 *HetTet(a,b) *(1+2*a/(2+a))+2/((2+a)**3)*(1+3*a/(2+a))
 
 def goodSecondSeed(a,b):
-     return 2*b/(2*b+1)*good1(a,b) + 1/(2*b+1)*goodStar(a,b)
+     return 2*b/(2*b+1)*Branching1(a,b) + 1/(2*b+1)*Branching2(a,b)
 
 def goodFirstSeed(a,b):
-     return 1/(2*a*b+1)*(goodStar(a,b)+2*a*b/(2*a*b+1)/(a+2)*(good1(a,b)+1/(a+2)*(good2(a,b)+2/(a+2))))
+     return 1/(2*a*b+1)*(Branching2(a,b)+2*a*b/(2*a*b+1)/(a+2)*(Branching1(a,b)+1/(a+2)*(HetTet(a,b)+2/(a+2))))
 
 def Twelve(a,b):
      x22=(1-FourOne(a*b,1))*.5

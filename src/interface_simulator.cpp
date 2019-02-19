@@ -6,11 +6,6 @@ bool KILL_BACK_MUTATIONS=false;
 const std::string file_base_path="//scratch//asl47//Data_Runs//Bulk_Data//";
 const std::map<Phenotype_ID,uint8_t> phen_stages{{{0,0},0},{{10,0},4},{{1,0},1},{{2,0},2},{{4,0},2},{{4,1},3},{{8,0},3},{{12,0},4},{{16,0},4}};
 
-namespace simulation_params {
-  uint16_t population_size=100;
-  double fitness_factor=1;
-}
-
 void EvolutionRunner() {
   /*!PYTHON INFORMATION*/
   const std::string py_exec = "python3 ";

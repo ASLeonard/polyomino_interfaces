@@ -229,7 +229,7 @@ class EvoData(object):
           return r'Data struct for S*={:.3f},T={:.3g},mu={:.2g},gamma={:.2g}'.format(self.S_star,self.T,self.mu,self.gamma)
      
 def loadPickle(S_star,t,mu,gamma):
-     with open('/rscratch/asl47/Pickles/Y{}T{}Mu{}F{}.pkl'.format(S_star,*(float(i) for i in (t,mu,gamma))), 'rb') as f:
+     with open('Y{}T{}Mu{}F{}.pkl'.format(S_star,*(float(i) for i in (t,mu,gamma))), 'rb') as f:
           return EvoData(S_star,t,mu,gamma,load(f))
 
 def joinPickle(p1,p2):
@@ -238,7 +238,7 @@ def joinPickle(p1,p2):
      return p1
      
 def loadNPZ(S_star,t,mu,gamma):
-     return np.load('/rscratch/asl47/Pickles/Y{}T{}Mu{}F{}.npz'.format(S_star,*(float(i) for i in (t,mu,gamma))), 'rb')['arr_0']
+     return np.load('Y{}T{}Mu{}F{}.npz'.format(S_star,*(float(i) for i in (t,mu,gamma))), 'rb')['arr_0']
      
 def plotExp(evo_data_struct,add_samps=False):
      evo_data=evo_data_struct.evo_strs
@@ -695,13 +695,6 @@ def AddConnectionPatch(ax,pts,weight):
      
      return (ln,ar)
 
-def main():
-     plotTransitionsDetailed(getD())
-     return 
-
-if __name__ == "__main__":
-    main()
-
     
 def MutualExclusion(n,S_c,L_I=64):
      return (binom(L_I/2,.5).cdf(int(round(S_c*L_I/2))-1)**n)*(binom(L_I,.5).cdf(int(S_c*L_I)-1)**(n*(n-1)/2.))
@@ -710,8 +703,6 @@ def plotExclusion(S_c,col='orangered'):
      xs=np.linspace(1,500,500)
      mut=MutualExclusion(xs,S_c)
      plt.plot(xs,mut,c=col,marker='h',ls='')
-     #plt.plot(xs[:-1],-np.diff(mut),c='royalblue')
-     #print -np.diff(mut),sum(-np.diff(mut))
      plt.show(block=False)
      
 """RANDOM THEORY SECTION """
@@ -779,6 +770,3 @@ def plotInterfaceProbability(l_I,l_g,Nsamps=False):
      ax2.spines['top'].set_visible(False)
      
      plt.show(block=False) 
-
-def PhenTable():
-     return {(1,0):(1,1,1),(2,0):(2,1,1,5),(4,0):(2,2,1,2,4,3),(4,1):(2,2,1,2,4,5),(8,0):(4,4,0,0,1,0,4,5,6,0,0,8,7,2,0,3,0,0),(12,0):(4,4,0,1,2,0,1,5,6,2,4,8,7,3,0,4,3,0),(16,0):(4,4,1,2,1,2,4,5,6,3,1,8,7,2,4,3,4,3),(10,0):(4,3,0,1,2,0,1,5,6,2,4,3,7,3)}

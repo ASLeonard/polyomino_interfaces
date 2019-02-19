@@ -70,7 +70,9 @@ namespace interface_model
       interacting_indices.clear();
     }
 
-    pt->RelabelPhenotypes(Phenotype_IDs,phenotype_interactions);
+    pt->RelabelPIDs(Phenotype_IDs);
+    pt->RelabelMaps(phenotype_interactions,true);
+    pt->UpdateFitnesses();
     std::map<Phenotype_ID,uint16_t> ID_counter=pt->PhenotypeFrequencies(Phenotype_IDs);
 
     if(!ID_counter.empty())
