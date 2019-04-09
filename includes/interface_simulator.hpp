@@ -21,7 +21,7 @@ void ReducedModelTable(FitnessPhenotypeTable* pt);
 void FinalModelTable(FitnessPhenotypeTable* pt);
 
 /* Main evolution runners */
-void EvolvePopulation(std::string run_details); 
+void EvolvePopulation(const std::string run_details); 
 void EvolutionRunner();
 
 

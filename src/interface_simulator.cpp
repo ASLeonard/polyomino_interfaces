@@ -63,7 +63,7 @@ void FinalModelTable(FitnessPhenotypeTable* pt) {
 
 
 
-void EvolvePopulation(std::string run_details) {
+void EvolvePopulation(const std::string run_details) {
   std::string file_simulation_details=BINARY_WRITE_FILES ? run_details+".BIN" : "_Y"+std::to_string(simulation_params::binding_threshold)+"_T"+ std::to_string(simulation_params::temperature) +"_Mu"+std::to_string(simulation_params::mu_prob)+"_Gamma"+std::to_string(simulation_params::fitness_factor)+run_details+".txt";
     
   std::ofstream fout_strength(file_base_path+"Strengths"+file_simulation_details,BINARY_WRITE_FILES ? std::ios::binary :std::ios::out);

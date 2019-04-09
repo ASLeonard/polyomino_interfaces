@@ -2,6 +2,13 @@ import numpy as np
 from numpy import linalg as LA
 import os
 
+#############
+## GLOBALS ##
+#############
+BASE_PATH=''
+interface_length=64
+interface_type=np.uint64
+
 def setBasePath(path,binary_mode):
      if binary_mode:
           default_file='/{}_Run{}.BIN'
@@ -28,16 +35,18 @@ def reverseBits(value):
 
 class Interactions(object):
      __slots__ = ('bonds','strengths')
-     def __init__(self,bonds=[],strengths=[]):
-          self.bonds=bonds
-          self.strengths=strengths
+     
+     def __init__(self,bonds=None,strengths=None):
+          self.bonds = bonds or []
+          self.strengths = strengths or []
+          
      def __iter__(self):
           for b,s in zip(self.bonds,self.strengths):
                yield (b,s)
+               
      def __repr__(self):
           return "{} interactions".format(len(self.bonds))
-         
-       
+
 def LSHB(run,pop_size):
      return np.fromfile(BASE_PATH.format('Selections',run),dtype=np.uint16).reshape(-1,pop_size)
 
@@ -99,14 +108,14 @@ def LoadPhenotypeTable(run):
      return {tuple(px[:2]): tuple(px[2:]) for px in phenotype_table}
 
 def LoadAll(run,params,cwd=None):
-     binary_mode=type(params) is int
+     binary_mode=isinstance(params,int)
      setBasePath(cwd if cwd else os.getcwd(),binary_mode)
 
      if binary_mode:
           s=LSHB(run,params)
           p=LPB(run,params)
           st=LSB(run,params)
-     else:     
+     else:
           st=LoadStrengthHistory(run,*params)
           p=LoadPIDHistory(run,*params)
           s=LoadSelectionHistory(run,*params)
@@ -118,46 +127,50 @@ def ObjArray(data):
      shape=(len(data),len(data[0]))
      nparr=np.empty(shape,dtype=object)
      nparr[:]=data
-     return nparr 
+     return nparr
 
-""" DRIFT SECTION """
+#################
+## RANDOM WALK ##
+#################
 def RandomWalk(I_size=64,n_steps=1000,phi=0.5,S_star=0.6,analytic=False):
      s_hats=np.linspace(0,1,I_size+1)
-     N=int(I_size*(1-S_star))+1
+     N_states=int(I_size*(1-S_star))+1
+
+     def __getSteadyStates(val):
+          rows=[[1-phi,phi*(1-val[0])]+[0]*(N_states-2)]
+          for i in range(1,N_states-1):
+               rows.append([0]*(i-1)+[phi*val[i],1-phi,phi*(1-val[i])]+[0]*(N_states-2-i))
+          rows.append([0]*(N_states-2)+[phi*val[-1],1-phi])
+          matrix= np.vstack(rows).T
+          eigval,eigvec=LA.eig(matrix)
+          ve=eigvec.T[np.argmax(eigval)]
+          return max(eigval),ve/sum(ve)
      
      if analytic:
-          analytic_states=__getSteadyStates(N,phi,s_hats[-N:])[1]
-          #return analytic_states
-          return sum(s_hats[-N:]*analytic_states)
+          analytic_states=__getSteadyStates(phi,s_hats[-N_states:])[1]
+          return sum(s_hats[-N_states:]*analytic_states)
      
-     states=np.array([1]+[0]*(N-1),dtype=float)
-     progressive_states=[sum(s_hats[-N:]*states)]
+     states=np.array([1]+[0]*(N_states-1),dtype=float)
+     progressive_states=[sum(s_hats[-N_states:]*states)]
 
-     for i in range(n_steps):
-          states=__updateStates(states,s_hats[-N:],phi)
-          progressive_states.append(sum(s_hats[-N:]*states))
+     def __updateStates(states,val):
+          states_updating=states.copy()
+          for i in range(states.shape[0]):
+               states_updating[i]-=states[i]*phi
+               if i!=0:
+                    states_updating[i]+=states[i-1]*phi*(1-val[i-1])
+               if i!=states.shape[0]-1:
+                    states_updating[i]+=states[i+1]*phi*val[i+1]
+          return states_updating/sum(states_updating)
+
+     for _ in range(n_steps):
+          states=__updateStates(states,s_hats[-N_states:])
+          progressive_states.append(sum(s_hats[-N_states:]*states))
      return progressive_states
 
-def __updateStates(states,val,phi=0.5):
-     states_updating=states.copy()
-     for i in range(states.shape[0]):
-          states_updating[i]-=states[i]*phi
-          if i!=0:
-               states_updating[i]+=states[i-1]*phi*(1-val[i-1])
-          if i!=states.shape[0]-1:
-               states_updating[i]+=states[i+1]*phi*val[i+1]
-     return states_updating/sum(states_updating)     
-
-def __getSteadyStates(N_states,mu,val):
-     rows=[[1-mu,mu*(1-val[0])]+[0]*(N_states-2)]
-     for i in range(1,N_states-1):
-          rows.append([0]*(i-1)+[mu*val[i],1-mu,mu*(1-val[i])]+[0]*(N_states-2-i))
-     rows.append([0]*(N_states-2)+[mu*val[-1],1-mu])
-     matrix= np.vstack(rows).T 
-     eigval,eigvec=LA.eig(matrix)
-     va=max(eigval)
-     ve=eigvec.T[np.argmax(eigval)]
-     return va,ve/sum(ve)
+################
+## PHASE SPACE##
+################
 
 def HetTet(a,b):
      return 1/(1+2*b)*(2*b+2/(a+2)*(1+a*1/(a+2)))
@@ -223,7 +236,5 @@ def calcTransitionParams(evo_strs,transitions,T,S_star):
                param_dict[(1,(12,0),(8,0))]=((S_star/evo_strs[(8,0)][(2,2)][-1])**T,(evo_strs[(8,0)][(2,2)][-1]/evo_strs[(8,0)][(1,2)][-1])**T)
                param_dict[(0,(12,0),(8,0))]=((evo_strs[(12,0)][(4,4)][0]/evo_strs[(12,0)][(2,4)][0])**T,(evo_strs[(12,0)][(2,4)][0]/evo_strs[(12,0)][(3,4)][0])**T)
                param_dict[(0,(12,0),(12,0))]=((evo_strs[(12,0)][(4,4)][-1]/evo_strs[(12,0)][(2,4)][-1])**T,(evo_strs[(12,0)][(2,4)][-1]/evo_strs[(12,0)][(3,4)][-1])**T)
-               
-     
-     
+
      return param_dict
