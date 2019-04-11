@@ -1,8 +1,13 @@
 #include "interface_simulator.hpp"
 #include <iostream>
 
+
 constexpr bool BINARY_WRITE_FILES=false;
+
+
 bool KILL_BACK_MUTATIONS=false;
+
+//set the file path to be where the (large) files will be written, by default the location where the 
 const std::string file_base_path="//scratch//asl47//Data_Runs//Bulk_Data//";
 const std::map<Phenotype_ID,uint8_t> phen_stages{{{0,0},0},{{10,0},4},{{1,0},1},{{2,0},2},{{4,0},2},{{4,1},3},{{8,0},3},{{12,0},4},{{16,0},4}};
 
@@ -25,7 +30,6 @@ void EvolutionRunner() {
 
     
   }
-  //python3 ~/Documents/PolyDev/polyomino_interfaces/scripts/interface_analysis.py "external" $Model $Thresh $T $Mu $Gamma $RUNS
 }
 void ReducedModelTable(FitnessPhenotypeTable* pt) {
   pt->FIXED_TABLE=true;
@@ -63,7 +67,7 @@ void FinalModelTable(FitnessPhenotypeTable* pt) {
 
 
 
-void EvolvePopulation(const std::string run_details) {
+void EvolvePopulation(const std::string& run_details) {
   std::string file_simulation_details=BINARY_WRITE_FILES ? run_details+".BIN" : "_Y"+std::to_string(simulation_params::binding_threshold)+"_T"+ std::to_string(simulation_params::temperature) +"_Mu"+std::to_string(simulation_params::mu_prob)+"_Gamma"+std::to_string(simulation_params::fitness_factor)+run_details+".txt";
     
   std::ofstream fout_strength(file_base_path+"Strengths"+file_simulation_details,BINARY_WRITE_FILES ? std::ios::binary :std::ios::out);
@@ -105,30 +109,31 @@ void EvolvePopulation(const std::string run_details) {
     binary_selections.reserve(simulation_params::population_size);
   }
   
-  
-  for(uint32_t generation=0;generation<simulation_params::generation_limit;++generation) { /*! MAIN EVOLUTION LOOP */
+  //main evolution loop
+  for(uint32_t generation=0;generation<simulation_params::generation_limit;++generation) {
 
+    //if model type is 2, update the dynamic fitness landscape
     if(simulation_params::model_type==2) {
       dfl(generation);
-      //std::cout<<"12: "<<pt.phenotype_fitnesses[12][0]<<" /10: "<<pt.phenotype_fitnesses[10][0]<<std::endl;
     }
 
+    //main genotype loop
     uint16_t nth_genotype=0;
-    for(PopulationGenotype& evolving_genotype : evolving_population) { /*! GENOTYPE LOOP */
+    for(PopulationGenotype& evolving_genotype : evolving_population) {
       
       InterfaceAssembly::Mutation(evolving_genotype.genotype);
 
-     
+      //if model type is 1, swap subunits if only edge is on second subunit
       if(simulation_params::model_type==1)
-        EnsureNeutralDisconnections(evolving_genotype.genotype);         
-      const std::vector<std::pair<InteractionPair,double> > edges = InterfaceAssembly::GetActiveInterfaces(evolving_genotype.genotype);
+        EnsureNeutralDisconnections(evolving_genotype.genotype);
+
+      //update edges, genotype, and fitness
+      const auto edges = InterfaceAssembly::GetActiveInterfaces(evolving_genotype.genotype);
       assembly_genotype=evolving_genotype.genotype;
       prev_ev=evolving_genotype.pid;
 
-
       population_fitnesses[nth_genotype]=interface_model::PolyominoAssemblyOutcome(assembly_genotype,&pt,evolving_genotype.pid,pid_interactions);
-      
-      //std::cout<<+evolving_genotype.pid.first<<","<<+evolving_genotype.pid.second<<std::endl;
+     
       
       if((simulation_params::model_type==12 && assembly_genotype.size()/4 != simulation_params::n_tiles) || (KILL_BACK_MUTATIONS && prev_ev!=evolving_genotype.pid && phen_stages.at(prev_ev)>=phen_stages.at(evolving_genotype.pid))) {
         population_fitnesses[nth_genotype]=0;
@@ -152,7 +157,7 @@ void EvolvePopulation(const std::string run_details) {
         fout_strength<<",";
         fout_phenotype_IDs << +evolving_genotype.pid.first <<" "<<+evolving_genotype.pid.second<<" ";
       }
-    } /*! END GENOTYPE LOOP */
+    } 
 
     /*! SELECTION */
     uint16_t nth_repro=0;
@@ -217,6 +222,7 @@ int main(int argc, char* argv[]) {
   return 0;
 }
 
+//set parameters based on input arguments, if there are fewer than 3 and it isn't a help query, flag it
 void SetRuntimeConfigurations(int argc, char* argv[]) {
   if(argc<3 && argv[1][1]!='H')
     std::cout<<"Invalid Parameters"<<std::endl;
@@ -255,7 +261,9 @@ void SetRuntimeConfigurations(int argc, char* argv[]) {
       default: std::cout<<"Unknown Parameter Flag: "<<argv[arg][1]<<std::endl;
       }
     }
-  InterfaceAssembly::SetBindingStrengths();
+    
+    //after parameters are set, calculate the strength table given the new values
+    InterfaceAssembly::SetBindingStrengths();
   }
 }
 

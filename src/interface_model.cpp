@@ -19,10 +19,12 @@ void InterfaceAssembly::PrintBindingStrengths() {
     std::cout<<b<<std::endl;
 }      
 
+//define interaction matrix for this genotype model
 double InterfaceAssembly::InteractionMatrix(const interface_type face_1,const interface_type face_2) {
   return binding_probabilities[interface_model::SammingDistance(face_1,face_2)];
 }
 
+//define how a genotype element should be mutated
 void InterfaceAssembly::Mutation(BGenotype& genotype) {
   for(interface_type& base : genotype)
     for(uint8_t nth_bit=0; nth_bit<interface_size; ++nth_bit)
@@ -50,16 +52,13 @@ namespace interface_model
 
     const std::vector<std::pair<InteractionPair,double> > edges = InterfaceAssembly::GetActiveInterfaces(binary_genome);
 
-        
-    std::vector<int8_t> assembly_information;
     Phenotype phen;
     std::vector<Phenotype_ID> Phenotype_IDs;
     Phenotype_IDs.reserve(pt->phenotype_builds);
-    std::set<InteractionPair > interacting_indices;
     std::map<Phenotype_ID, std::set<InteractionPair> > phenotype_interactions;
 
     for(uint16_t nth=0;nth<pt->phenotype_builds;++nth) {
-      assembly_information=InterfaceAssembly::AssemblePolyomino(edges,interacting_indices);
+      auto [assembly_information, interacting_indices] =InterfaceAssembly::AssemblePolyomino(edges);
       if(assembly_information.size()>0) {
         phen=GetPhenotypeFromGrid(assembly_information);
         Phenotype_IDs.emplace_back(pt->GetPhenotypeID(phen));
@@ -67,7 +66,6 @@ namespace interface_model
       }
       else
         Phenotype_IDs.emplace_back(0,0);
-      interacting_indices.clear();
     }
 
     pt->RelabelPIDs(Phenotype_IDs);

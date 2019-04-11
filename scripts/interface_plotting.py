@@ -1,6 +1,8 @@
 import sys
 import numpy as np
-if not np.any(['scripts' in pth for pth in sys.path]):
+
+#add local paths to load custom methods
+if not any(('scripts' in pth for pth in sys.path)):
      sys.path.append('scripts/')
      sys.path.append('../polyomino_core/scripts')
 
@@ -15,25 +17,28 @@ from matplotlib.patches import Rectangle,PathPatch,ConnectionPatch
 from matplotlib.colors import LinearSegmentedColormap, LogNorm
 from pickle import load
 
-
-from scipy.stats import linregress,binom,scoreatpercentile
-from scipy.interpolate import splprep, splev
-from itertools import combinations_with_replacement as cwr,product
-
-from random import choice
-from copy import deepcopy
+from itertools import product
 from collections import defaultdict
 
-def plotParamGrid(Ts=[0,5,15,30,50],Ys=[0,2,5,10]):
+
+
+def plotParamGrid(S_hat,jump,Ts,Ys):
      _,axarr=plt.subplots(len(Ys),len(Ts),sharex=True,sharey=True)
 
+     #plotting parameters
      bc={2:'chocolate',3:'royalblue',4:'forestgreen'}
      mc={2:'o',3:'v',4:'^'}
      mco={2:0,3:16,4:32}
+
+     #truncate generations
      MAX_G=250
+
+     #iterate over all temperature, nondetermism combinations
      for (gamma,T),ax in zip(product(Ys,Ts),axarr.flatten()):
-          d=loadPickle(.671875,T,1,gamma)
-          ax.axhline(.671875,c='k',ls='-',lw=0.75)
+
+          #load the relevant data
+          d=loadPickle(S_hat,T,jump,gamma)
+          ax.axhline(S_hat,c='k',ls='-',lw=0.75)
           ax.plot(range(MAX_G),RandomWalk(64,MAX_G-1,1./6,.671875,False),ls='--',c='k',zorder=20)
           if (16,0) not in d.evo_strs:
                continue
@@ -205,7 +210,7 @@ def plot2D(low=-1,high=1,res=1000,called=False):
 
      if called:
           return ax
-     plt.show(block=False)        
+     plt.show(block=False)  
      
 """PHYLOGENCY SECTION """
 class EvoData(object):
@@ -239,53 +244,70 @@ def loadNPZ(S_star,t,mu,gamma):
      return np.load('Y{}T{}Mu{}F{}.npz'.format(S_star,*(float(i) for i in (t,mu,gamma))), 'rb')['arr_0']
      
 def plotExp(evo_data_struct,add_samps=False):
+
+     #pull simulation parameters from data structure
      evo_data=evo_data_struct.evo_strs
      evo_data_samp=evo_data_struct.evo_samps
      S_star=evo_data_struct.S_star
      mu=evo_data_struct.mu
-     
+
+     #plotting parameters
      phen_cols={(1,0):'dimgrey',(2,0):'firebrick',(4,0):'olivedrab',(4,1):'darkblue',(8,0):'chocolate',(3,0):'goldenrod',(12,0):'k',(16,0):'k',(12,1):'chartreuse'}
-     ancestors={(2,0):{1:(1,0)}, (4,0):{2:(1,0)}, (4,1):{4:(2,0),3:(4,0)}, (8,0):{1:(4,0),2:(2,0)}, (12,0): {2:(4,1),4:(8,0)}, (16,0): {2:(4,1),4:(8,0)}}
-     
      bond_marks={1:'o',2:'s',3:'v',4:'^'}
      bond_ls={1:'-',2:':',3:'-.',4:'--'}
      c_ls={1:'c',2:'m',3:'w.',4:'k'}
-     N_markers=10
+     N_markers=6
      MAX_G=250
+
+     #possible ancestors of each pid
+     ancestors={(2,0):{1:(1,0)}, (4,0):{2:(1,0)}, (4,1):{4:(2,0),3:(4,0)}, (8,0):{1:(4,0),2:(2,0)}, (12,0): {2:(4,1),4:(8,0)}, (16,0): {2:(4,1),4:(8,0)}}
+     
      
      f,axarr=plt.subplots(2,3,sharey=True)
+
+     #put each panel into dictionary accessed by pid
      ax_d={(4,0):axarr[0,0],(4,1):axarr[0,1],(12,0):axarr[1,2],(2,0):axarr[1,0],(8,0):axarr[1,1],(16,0):axarr[0,2]}
 
  
-     null_exp=RandomWalk(64,None,.5,S_star,True)
+     null_expectations=RandomWalk(64,None,.5,S_star,True)
      
      for phen,data in evo_data.items():
-          plt.setp(ax_d[phen].spines.values(), color=phen_cols[phen],lw=(2 if phen[0]<10 else 1))
-          if phen==(3,0) or phen==(12,1):
+          #ignore unused pids
+          if phen not in ancestors:
                continue
- 
+
+          #set panel border colour
+          plt.setp(ax_d[phen].spines.values(), color=phen_cols[phen],lw=(2 if phen[0]<10 else 1))
+          
+          #plot baseline and random walk expectation
           ax_d[phen].axhline(S_star,c='k',ls='-',lw=0.75)
           max_len=min(MAX_G,max(len(vals) for vals in data.values()))
           ax_d[phen].plot(range(max_len+1),RandomWalk(64,max_len,mu*1./6,S_star,False),ls='--',c='k',zorder=20)
 
+          #iterate over each edge in the assembly graph
           for i,((bond,new),strs) in enumerate(data.items()):
                if new not in ancestors[phen]:
                     continue
                ancestor_p=ancestors[phen][new]
+
+               #offset markers on edges with a top row ancestor
                top_row_ancestor=ancestor_p[0]==4
                strs=strs[:MAX_G]
                mark_tuple=[MAX_G//20*(top_row_ancestor),MAX_G//10]
                if phen==(8,0):
                     mark_tuple[0]+=MAX_G//40*(bond%2)
                mark_tuple=tuple(mark_tuple)
+
+               #plot averaged edge trend given plotting parameters above
                ax_d[phen].plot(range(len(strs)),strs,c=phen_cols[ancestor_p],marker=bond_marks[bond],markevery=mark_tuple,zorder=10,lw=.5,fillstyle=('none' if top_row_ancestor else 'full'),mew=1.5)
                
+               #if adding sampled individual runs, plot now
                if add_samps and evo_data_samp is not None:
                    for samp in evo_data_samp[phen][(bond,new)]:
                         samp=samp[:MAX_G]
                         ax_d[phen].plot(range(len(samp)),samp,c=phen_cols[ancestors[phen][new]],alpha=0.15,lw=.5)
-               #VSS(PhenTable()[phen],ax_d[phen],(.4,.95),.2)
                
+     #add labels
      f.tight_layout()
      axarr[1,1].set_xlabel('generations')
      axarr[1,0].set_ylabel(r'$\langle \hat{S} \rangle$')
@@ -312,7 +334,7 @@ def plotPhaseSpace(evo_data,low=-2,high=2,res=250):
           ZZ=10
           hatch='' #if pure else '////'
           m_size=500 if phen_source==(12,0) else 120
-          if phen==(12,0):                    
+          if phen==(12,0):              
                ec='w' #if pure else 'k'
                ax_2d.scatter(*np.log10(phase_p),marker=phen_mark[phen_source],c=fc,edgecolors=ec,s=m_size,label=phen_source,lw=2,hatch=hatch,zorder=ZZ)
           else:
@@ -368,7 +390,7 @@ def plotPathways(evo_data,norm_style=''):
           for phen_from in phen_froms:
                try:
                     d[(phen_to,phen_from)]=evo_trans[phen_to][phen_from]/(evo_trans[phen_to][phen_from]+failed[phen_to][phen_from])
-               except:
+               except KeyError:
                     if phen_to in evo_trans and phen_from in evo_trans[phen_to]:
                          d[(phen_to,phen_from)]=1
                     else:
