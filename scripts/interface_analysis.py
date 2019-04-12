@@ -1,18 +1,18 @@
 import subprocess
-import os
-#subprocess.run('cd ..',shell=True)
-
-#os.chdir('scripts')
+import sys
+#add local paths to load custom methods
+if not any(('scripts' in pth for pth in sys.path)):
+     sys.path.append('scripts/')
+     
 from interface_methods import *
 import numpy as np
 
 
 from pickle import load,dump
-from collections import defaultdict,Counter
+from collections import defaultdict
 from itertools import product
 import math
 
-import warnings
 
 #GLOBAL PIDS
 null_pid,init_pid=np.array([0,0],dtype=np.uint8),np.array([1,0],dtype=np.uint8)
@@ -21,7 +21,10 @@ null_pid,init_pid=np.array([0,0],dtype=np.uint8),np.array([1,0],dtype=np.uint8)
 def collateNPZs(S_star,t,mu,gamma,runs):
      full_data=[]
      for r in runs:
-          full_data.append(np.load(open('Mu{}Y{}T{}F{}O{}.npz'.format(mu,S_star,t,gamma,r), 'rb'))['arr_0'])
+          try:
+               full_data.append(np.load(open('Mu{}Y{}T{}F{}O{}.npz'.format(mu,S_star,t,gamma,r), 'rb'))['arr_0'])
+          except FileNotFoundError:
+               print('missing file for run ',r)
      return np.asarray(full_data)
 
 def collateAnalysis(S_star,t,mu,gamma,runs):
@@ -30,7 +33,7 @@ def collateAnalysis(S_star,t,mu,gamma,runs):
      for r in runs:
           try:
                full_data.append(load(open('Mu{}Y{}T{}F{}O{}.pkl'.format(mu,S_star,t,gamma,r), 'rb')))
-          except:
+          except FileNotFoundError:
                print('missing pickle for run ',r)
      N_runs=0
      full_transition=defaultdict(lambda: defaultdict(int))
@@ -46,7 +49,7 @@ def collateAnalysis(S_star,t,mu,gamma,runs):
           for (phen_in,phen_out),count in fails.items():
                failed_jumps[phen_in][phen_out]+=count
           for phen,evo_list in str_evo.items():
-               for (gen,evos) in evo_list:
+               for (_,evos) in evo_list:
                     for (bond_key,new_bond,_,_),strs in evos.items():
                          raw_evolutions[phen][(bond_key,new_bond)].append(strs)
           
@@ -127,7 +130,7 @@ def KAG(phenotypes_in,selections,interactions):
                     phenotypes[gen_val,descendents]=null_pid
                elif (gen_val-tree.gen)>=max_depth:
                     return True
-                              
+
      def __addBranch():        
           if g_idx:
                if len(bond_ref)<len(interactions[g_idx-1,p_idx].bonds):
@@ -165,7 +168,7 @@ def KAG(phenotypes_in,selections,interactions):
                          if not __addBranch():
                               return None
                          break
-               
+
                elif not np.array_equal(phenotypes[g_idx-1,p_idx],pid_ref):
                     if not __addBranch():                         
                          return None
@@ -211,7 +214,7 @@ def KAG(phenotypes_in,selections,interactions):
      
 def treeBondStrengths(KAG,interactions):
      bond_data=defaultdict(list)
-     for tree in KAG: 
+     for tree in KAG:
           bond_maps=defaultdict(list)
           max_pop=0
           for generation,populations in enumerate(tree.seq,tree.gen):
@@ -229,7 +232,7 @@ def treeBondStrengths(KAG,interactions):
                for k,v in inner_bond_maps.items():
                     bond_maps[k].append(np.mean(v))
           bond_data[tuple(tree.pID)].append((tree.gen,dict(bond_maps)))
-     return dict(bond_data)     
+     return dict(bond_data)
 
 
 
@@ -262,26 +265,35 @@ def analyseHomogeneousPopulation(run,temperature):
      for generation in range(max_gen):
           params=defaultdict(list)
           for species in range(pop_size):
+
+               ##if the individual is wrong pid or lost a bond, move on
                if np.array_equal(phenotypes[generation,species],null_pid):
                     continue
                if len(st[generation,species].bonds)!=3:
                     continue
+
+               ##try just for safety
                try:
+                    ##get all the bonds, and they are of known hardcoded topology
                     bonds={getBondType(bond,st[generation,species].bonds):strength for bond,strength in st[generation,species]}
                     params['a'].append((bonds[4]/bonds[2])**temperature)
                     params['b'].append((bonds[2]/bonds[3])**temperature)
                except KeyError:
                     ##incomplete bonds, ignore and move on
                     continue
-
+               
+          ##append the per-generation means
           param_trajectory.append([np.mean(params['a']),np.mean(params['b'])])
      return np.asarray(param_trajectory)
 
 
 def runEvolutionSequence():
 
-     default_parameters={'file_path' : '../bin/', 'N' : 2, 'P' : 100, 'K' : 1000, 'B' : 20, 'X': .75, 'F': 5, 'A' : 2, 'D' : 4, 'J': 5, 'M': 1, 'Y' : .6875, 'T': 10}
-     
+     #default_parameters={'file_path' : '../bin/', 'N' : 2, 'P' : 100, 'K' : 400, 'B' : 100, 'X': .5, 'F': 5, 'A' : 1, 'D' : 1, 'J': 5, 'M': 1, 'Y' : .6875, 'T': 10, 'O' : 100, 'G' : 10} 
+     #t2
+     default_parameters={'file_path' : '../bin/', 'N' : 2, 'P' : 100, 'K' : 600, 'B' : 150, 'X': 0, 'F': 1, 'A' : 2, 'D' : 1, 'J': 1, 'M': 1, 'Y' : .6875, 'T': 25, 'O' : 200, 'G' : 10} 
+
+
      print('Running evolution sequence')
 
      def generateParameterString():
@@ -292,7 +304,7 @@ def runEvolutionSequence():
                prm_str+='-{} {} '.format(param,value)
           return prm_str
 
-     ##run evolution simulation given parameters 
+     ##run evolution simulation given parameters
      subprocess.run(default_parameters['file_path']+'ProteinEvolution -E ' + generateParameterString()[:-1],shell=True)
 
      fname_params=tuple(float(default_parameters[k]) for k in ('Y','T','M','F'))
@@ -311,7 +323,7 @@ def analysisByMode(mode,run, params):
           with open(file_base+'.pkl','wb') as f:
                dump(analysis,f)
      elif mode == 2:
-          analysis=analyseHomogeneousPopulation(run,params[1])          
+          analysis=analyseHomogeneousPopulation(run,params[1])
           np.savez_compressed(file_base,analysis)
      else:
           print('unknown mode request, set parameter \'A\'')

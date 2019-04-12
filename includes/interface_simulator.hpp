@@ -41,7 +41,7 @@ struct DynamicFitnessLandscape {
   }
 
 private:
-  std::array<uint8_t,2> pid_cyc{12,10};
+  std::array<uint8_t,2> pid_cyc{10,12};
   FitnessPhenotypeTable* pt_iter;
   uint16_t period;
   double sharpness;

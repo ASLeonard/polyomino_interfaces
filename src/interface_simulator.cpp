@@ -2,9 +2,6 @@
 #include <iostream>
 
 
-constexpr bool BINARY_WRITE_FILES=false;
-
-
 bool KILL_BACK_MUTATIONS=false;
 
 //set the file path to be where the (large) files will be written, by default the location where the 
@@ -58,12 +55,13 @@ void FinalModelTable(FitnessPhenotypeTable* pt) {
 
 
 void EvolvePopulation(const std::string& run_details) {
+
   std::string file_simulation_details= run_details+".txt";
     
-  std::ofstream fout_strength(file_base_path+"Strengths"+file_simulation_details,BINARY_WRITE_FILES ? std::ios::binary :std::ios::out);
+  std::ofstream fout_strength(file_base_path+"Strengths"+file_simulation_details,std::ios::out);
   std::string fname_phenotype(file_base_path+"PhenotypeTable"+run_details+".txt");  
-  std::ofstream fout_selection_history(file_base_path+"Selections"+file_simulation_details,BINARY_WRITE_FILES ? std::ios::binary :std::ios::out);    
-  std::ofstream fout_phenotype_IDs(file_base_path+"PIDs"+file_simulation_details,BINARY_WRITE_FILES ? std::ios::binary :std::ios::out );
+  std::ofstream fout_selection_history(file_base_path+"Selections"+file_simulation_details,std::ios::out);    
+  std::ofstream fout_phenotype_IDs(file_base_path+"PIDs"+file_simulation_details,std::ios::out );
   
   
   std::vector<double> population_fitnesses(simulation_params::population_size);
@@ -91,13 +89,7 @@ void EvolvePopulation(const std::string& run_details) {
   std::set<InteractionPair> pid_interactions;
   BGenotype assembly_genotype;
   Phenotype_ID prev_ev;
-  std::vector<uint8_t> binary_pids,binary_strengths;
-  std::vector<uint16_t> binary_selections;
-  if constexpr (BINARY_WRITE_FILES) {
-    binary_pids.reserve(2*simulation_params::population_size);
-    binary_strengths.reserve(12*simulation_params::population_size);
-    binary_selections.reserve(simulation_params::population_size);
-  }
+
   
   //main evolution loop
   for(uint32_t generation=0;generation<simulation_params::generation_limit;++generation) {
@@ -125,9 +117,8 @@ void EvolvePopulation(const std::string& run_details) {
       prev_ev=evolving_genotype.pid;
 
       population_fitnesses[nth_genotype]=interface_model::PolyominoAssemblyOutcome(assembly_genotype,&pt,evolving_genotype.pid,pid_interactions);
-
       
-      if((simulation_params::model_type==12 && assembly_genotype.size()/4 != simulation_params::n_tiles) || (KILL_BACK_MUTATIONS && prev_ev!=evolving_genotype.pid && phen_stages.at(prev_ev)>=phen_stages.at(evolving_genotype.pid))) {
+      if((simulation_params::model_type==2 && assembly_genotype.size()/4 != simulation_params::n_tiles) || (KILL_BACK_MUTATIONS && prev_ev!=evolving_genotype.pid && phen_stages.at(prev_ev)>=phen_stages.at(evolving_genotype.pid))) {
         population_fitnesses[nth_genotype]=0;
         evolving_genotype.pid=NULL_pid;
         pid_interactions.clear();        
@@ -136,46 +127,30 @@ void EvolvePopulation(const std::string& run_details) {
 
 
 
-      if constexpr (BINARY_WRITE_FILES) {
-        binary_pids.emplace_back(evolving_genotype.pid.first);
-        binary_pids.emplace_back(evolving_genotype.pid.second);
-        for(auto x : pid_interactions)
-          binary_strengths.insert(binary_strengths.end(),{static_cast<uint8_t>(x.first),static_cast<uint8_t>(x.second),interface_model::SammingDistance(assembly_genotype[x.first],assembly_genotype[x.second])});
-        binary_strengths.emplace_back(255);
-      }
-      else {
+
         for(auto x : pid_interactions)
           fout_strength<<+x.first<<" "<<+x.second<<" "<<+interface_model::SammingDistance(assembly_genotype[x.first],assembly_genotype[x.second])<<".";
         fout_strength<<",";
         fout_phenotype_IDs << +evolving_genotype.pid.first <<" "<<+evolving_genotype.pid.second<<" ";
       }
-    } 
+    
 
     /*! SELECTION */
     uint16_t nth_repro=0;
     for(uint16_t selected : RouletteWheelSelection(population_fitnesses)) {
       reproduced_population[nth_repro++]=evolving_population[selected];
-      if constexpr (BINARY_WRITE_FILES)
-        binary_selections.emplace_back(selected);
-      else
+
         fout_selection_history<<+selected<<" ";
     }
     evolving_population.swap(reproduced_population);
 
   
-    if constexpr (BINARY_WRITE_FILES) {
-      BinaryWriter(fout_phenotype_IDs,binary_pids);
-      binary_pids.clear();
-      BinaryWriter(fout_selection_history,binary_selections);
-      binary_selections.clear();
-      BinaryWriter(fout_strength,binary_strengths);
-      binary_strengths.clear();
-    }
-    else {
+
+
       fout_selection_history<<"\n";
       fout_phenotype_IDs<<"\n";
       fout_strength<<"\n";
-    }
+    
     
   } /* END EVOLUTION LOOP */
   pt.PrintTable(fname_phenotype);

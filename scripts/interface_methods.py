@@ -1,6 +1,7 @@
 import numpy as np
 from numpy import linalg as LA
 import os
+from pickle import load
 
 #############
 ## GLOBALS ##
@@ -94,6 +95,36 @@ def ObjArray(data):
      nparr[:]=data
      return nparr
 
+#########################
+## DATA STORAGE UTILITY##
+#########################
+
+class EvoData(object):
+     __slots__ = ('S_star','T','mu','gamma','transitions','N_runs','evo_strs','evo_samps','jumps')
+     def __init__(self,S_star,T,mu,gamma,data):
+          self.S_star=S_star
+          self.T=T
+          self.mu=mu
+          self.gamma=gamma
+          self.N_runs,self.transitions,self.jumps,self.evo_strs,self.evo_samps=data
+          
+          for form in (self.transitions, self.evo_strs, self.evo_samps):
+               if (10,0) in form:
+                    print("Clearing out 10s")
+                    del form[(10,0)]
+
+          
+     def __repr__(self):
+          return r'Data struct for S*={:.3f},T={:.3g},mu={:.2g},gamma={:.2g}'.format(self.S_star,self.T,self.mu,self.gamma)
+     
+def loadPickle(S_star,t,mu,gamma):
+     with open('Y{}T{}Mu{}F{}.pkl'.format(S_star,*(float(i) for i in (t,mu,gamma))), 'rb') as f:
+          return EvoData(S_star,t,mu,gamma,load(f))
+
+     
+def loadNPZ(S_star,t,mu,gamma):
+     return np.load('Y{}T{}Mu{}F{}.npz'.format(S_star,*(float(i) for i in (t,mu,gamma))), 'rb')['arr_0']
+
 #################
 ## RANDOM WALK ##
 #################
@@ -183,22 +214,36 @@ def calcTransitionParams(evo_strs,transitions,T,S_star):
 
      if (16,0) in evo_strs:
           if (4,1) in transitions[(16,0)]:
-               param_dict[(1,(16,0),(4,1))]=(evo_strs[(4,1)][(4,4)][-1]/evo_strs[(4,1)][(3,3)][-1])**T
+               if (2,0) in transitions[(4,1)]:
+                    param_dict[(1,(16,0),(4,1))]=(evo_strs[(4,1)][(4,4)][-1]/evo_strs[(4,1)][(3,3)][-1])**T
+               else:
+                    param_dict[(1,(16,0),(4,1))]=(evo_strs[(4,1)][(4,3)][-1]/evo_strs[(4,1)][(3,3)][-1])**T
+
                param_dict[(0,(16,0),(4,1))]=(evo_strs[(16,0)][(4,2)][0]/evo_strs[(16,0)][(3,2)][0])**T
                param_dict[(0,(16,0),(16,0))]=(evo_strs[(16,0)][(4,2)][-1]/evo_strs[(16,0)][(3,2)][-1])**T
           if (8,0) in transitions[(16,0)]:
-               param_dict[(1,(16,0),(8,0))]=(S_star/evo_strs[(8,0)][(1,1)][-1])**T
+               if (2,0) in transitions[(4,1)]:
+                    param_dict[(1,(16,0),(8,0))]=(S_star/evo_strs[(8,0)][(1,1)][-1])**T
+               else:
+                    param_dict[(1,(16,0),(8,0))]=(S_star/evo_strs[(8,0)][(2,2)][-1])**T
                param_dict[(0,(16,0),(8,0))]=(evo_strs[(16,0)][(4,4)][0]/evo_strs[(16,0)][(3,4)][0])**T
                param_dict[(0,(16,0),(16,0))]=(evo_strs[(16,0)][(4,4)][-1]/evo_strs[(16,0)][(3,4)][-1])**T
           
           
      if (12,0) in evo_strs:
           if (4,1) in transitions[(12,0)]:
-               param_dict[(1,(12,0),(4,1))]=((evo_strs[(4,1)][(4,4)][-1]/S_star)**T,(S_star/evo_strs[(4,1)][(3,3)][-1])**T)
+               if (2,0) in transitions[(4,1)]:
+                    param_dict[(1,(12,0),(4,1))]=((evo_strs[(4,1)][(4,4)][-1]/S_star)**T,(S_star/evo_strs[(4,1)][(3,3)][-1])**T)
+               else:
+                    param_dict[(1,(12,0),(4,1))]=((evo_strs[(4,1)][(4,3)][-1]/S_star)**T,(S_star/evo_strs[(4,1)][(3,3)][-1])**T)
                param_dict[(0,(12,0),(4,1))]=((evo_strs[(12,0)][(4,2)][0]/evo_strs[(12,0)][(2,2)][0])**T,(evo_strs[(12,0)][(2,2)][0]/evo_strs[(12,0)][(3,2)][0])**T)
                param_dict[(0,(12,0),(12,0))]=((evo_strs[(12,0)][(4,2)][-1]/evo_strs[(12,0)][(2,2)][-1])**T,(evo_strs[(12,0)][(2,2)][-1]/evo_strs[(12,0)][(3,2)][-1])**T)
+                    
           if (8,0) in transitions[(12,0)]:
-               param_dict[(1,(12,0),(8,0))]=((S_star/evo_strs[(8,0)][(2,2)][-1])**T,(evo_strs[(8,0)][(2,2)][-1]/evo_strs[(8,0)][(1,2)][-1])**T)
+               if (2,0) in transitions[(8,0)]:
+                    param_dict[(1,(12,0),(8,0))]=((S_star/evo_strs[(8,0)][(1,1)][-1])**T,(evo_strs[(8,0)][(2,2)][-1]/evo_strs[(8,0)][(1,2)][-1])**T)
+               else:
+                    param_dict[(1,(12,0),(8,0))]=((S_star/evo_strs[(8,0)][(2,2)][-1])**T,(evo_strs[(8,0)][(2,2)][-1]/evo_strs[(8,0)][(1,2)][-1])**T)
                param_dict[(0,(12,0),(8,0))]=((evo_strs[(12,0)][(4,4)][0]/evo_strs[(12,0)][(2,4)][0])**T,(evo_strs[(12,0)][(2,4)][0]/evo_strs[(12,0)][(3,4)][0])**T)
                param_dict[(0,(12,0),(12,0))]=((evo_strs[(12,0)][(4,4)][-1]/evo_strs[(12,0)][(2,4)][-1])**T,(evo_strs[(12,0)][(2,4)][-1]/evo_strs[(12,0)][(3,4)][-1])**T)
 
