@@ -9,11 +9,8 @@ BASE_PATH=''
 interface_length=64
 interface_type=np.uint64
 
-def setBasePath(path,binary_mode):
-     if binary_mode:
-          default_file='/{}_Run{}.BIN'
-     else:
-          default_file='/{}_Y{:.6f}_T{:.6f}_Mu{:.6f}_Gamma{:.6f}_Run{}.txt'
+def setBasePath(path):
+     default_file='/{}_Run{}.txt'
           
      global BASE_PATH
      
@@ -25,7 +22,6 @@ def setLength(length):
      global interface_type
      interface_type={8:np.uint8,16:np.uint16,32:np.uint32,64:np.uint64}[interface_length]
 
-setLength(64)
              
 def BindingStrength(base1,base2):
      return 1-bin(np.bitwise_xor(interface_type(base1),reverseBits(base2))).count('1')/interface_length
@@ -46,48 +42,25 @@ class Interactions(object):
                
      def __repr__(self):
           return "{} interactions".format(len(self.bonds))
-
-def LSHB(run,pop_size):
-     return np.fromfile(BASE_PATH.format('Selections',run),dtype=np.uint16).reshape(-1,pop_size)
-
-def LPB(run,pop_size):
-     return np.fromfile(BASE_PATH.format('PIDs',run),dtype=np.uint8).reshape(-1,pop_size,2)
-
-def LSB(run,pop_size):
-     raw_b=np.fromfile(BASE_PATH.format('Strengths',run),dtype=np.uint8)
-     wheres=np.where(raw_b== 255)[0]
-     res=np.empty(wheres.shape,dtype=object)
-     low_slice,ith=0,0
-     for high_slice in wheres:
-          sub_slice=raw_b[low_slice:high_slice]
-          if len(sub_slice)==0:
-               res[ith]=Interactions()
-          else:
-               res[ith]=Interactions(tuple(zip(sub_slice[::3],sub_slice[1::3])),1-sub_slice[2::3]/interface_length)
-          low_slice=high_slice+1
-          ith+=1
-
-
-     return res.reshape(-1,pop_size)
           
-def LoadSelectionHistory(run,S_star,t,mu,gamma):
+def loadSelectionHistory(run):
      selections=[]
-     for line in open(BASE_PATH.format('Selections',S_star,t,mu,gamma,run)):
+     for line in open(BASE_PATH.format('Selections',run)):
           converted=[int(i) for i in line.split()]
           selections.append(converted)
      return np.array(selections,np.uint16)
 
-def LoadPIDHistory(run,S_star,t,mu,gamma):
+def loadPIDHistory(run):
      phenotype_IDs=[]
-     for line in open(BASE_PATH.format('PIDs',S_star,t,mu,gamma,run)):
+     for line in open(BASE_PATH.format('PIDs',run)):
           converted=[int(i) for i in line.split()]
           phenotype_IDs.append(list(zip(*(iter(converted),) * 2)))
 
      return np.array(phenotype_IDs,dtype=np.uint8)
 
-def LoadStrengthHistory(run,S_star,t,mu,gamma):
+def loadStrengthHistory(run):
      strengths=[]
-     for line in open(BASE_PATH.format('Strengths',S_star,t,mu,gamma,run)):
+     for line in open(BASE_PATH.format('Strengths',run)):
           row=[]
           for species in line.split(',')[:-1]:
                bond_list=[]
@@ -103,25 +76,17 @@ def LoadStrengthHistory(run,S_star,t,mu,gamma):
                 
      return ObjArray(strengths)
 
-def LoadPhenotypeTable(run):
+def loadPhenotypeTable(run):
      phenotype_table= sorted([[int(i) for i in line.split()] for line in open(BASE_PATH.format('PhenotypeTable',run))],key=lambda z: z[0])
      return {tuple(px[:2]): tuple(px[2:]) for px in phenotype_table}
 
-def LoadAll(run,params,cwd=None):
-     binary_mode=isinstance(params,int)
-     setBasePath(cwd if cwd else os.getcwd(),binary_mode)
-
-     if binary_mode:
-          s=LSHB(run,params)
-          p=LPB(run,params)
-          st=LSB(run,params)
-     else:
-          st=LoadStrengthHistory(run,*params)
-          p=LoadPIDHistory(run,*params)
-          s=LoadSelectionHistory(run,*params)
-     setBasePath(cwd if cwd else os.getcwd(),True)
-     table=LoadPhenotypeTable(run)
-     return (s,p,st,table)
+def loadAllFiles(run,cwd=None):
+     setBasePath(cwd or os.getcwd())
+     st=loadStrengthHistory(run)
+     p=loadPIDHistory(run)
+     s=loadSelectionHistory(run)
+ 
+     return (s,p,st)
 
 def ObjArray(data):
      shape=(len(data),len(data[0]))
@@ -147,7 +112,7 @@ def RandomWalk(I_size=64,n_steps=1000,phi=0.5,S_star=0.6,analytic=False):
           return max(eigval),ve/sum(ve)
      
      if analytic:
-          analytic_states=__getSteadyStates(phi,s_hats[-N_states:])[1]
+          analytic_states=__getSteadyStates(s_hats[-N_states:])[1]
           return sum(s_hats[-N_states:]*analytic_states)
      
      states=np.array([1]+[0]*(N_states-1),dtype=float)

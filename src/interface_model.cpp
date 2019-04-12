@@ -58,7 +58,9 @@ namespace interface_model
     std::map<Phenotype_ID, std::set<InteractionPair> > phenotype_interactions;
 
     for(uint16_t nth=0;nth<pt->phenotype_builds;++nth) {
+
       auto [assembly_information, interacting_indices] =InterfaceAssembly::AssemblePolyomino(edges);
+	
       if(assembly_information.size()>0) {
         phen=GetPhenotypeFromGrid(assembly_information);
         Phenotype_IDs.emplace_back(pt->GetPhenotypeID(phen));
@@ -67,6 +69,7 @@ namespace interface_model
       else
         Phenotype_IDs.emplace_back(0,0);
     }
+	
 
     pt->RelabelPIDs(Phenotype_IDs);
     pt->RelabelMaps(phenotype_interactions,true);

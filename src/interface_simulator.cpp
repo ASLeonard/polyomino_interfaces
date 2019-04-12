@@ -8,29 +8,19 @@ constexpr bool BINARY_WRITE_FILES=false;
 bool KILL_BACK_MUTATIONS=false;
 
 //set the file path to be where the (large) files will be written, by default the location where the 
-const std::string file_base_path="//scratch//asl47//Data_Runs//Bulk_Data//";
+const std::string file_base_path="";
 const std::map<Phenotype_ID,uint8_t> phen_stages{{{0,0},0},{{10,0},4},{{1,0},1},{{2,0},2},{{4,0},2},{{4,1},3},{{8,0},3},{{12,0},4},{{16,0},4}};
 
 void EvolutionRunner() {
-  /*!PYTHON INFORMATION*/
-  const std::string py_exec = "python3 ";
-  const std::string py_loc = "~/Documents/PolyDev/polyomino_interfaces/scripts/interface_analysis.py ";
-  const std::string py_mode="internal "+std::to_string(simulation_params::model_type);
   
-  const std::string py_CALL=py_exec + py_loc + py_mode + " "+std::to_string(BINARY_WRITE_FILES)+" ";
-  const std::string python_params=" "+std::to_string(simulation_params::binding_threshold)+" "+std::to_string(simulation_params::temperature)+" "+std::to_string(simulation_params::mu_prob)+" "+std::to_string(simulation_params::fitness_factor)+" "+std::to_string(simulation_params::population_size);
-
   const uint16_t N_runs=simulation_params::independent_trials;
 #pragma omp parallel for schedule(dynamic) 
   for(uint16_t r=0;r < N_runs;++r) {
     EvolvePopulation("_Run"+std::to_string(r+simulation_params::run_offset));
-    /*!PYTHON CALL*/
-    std::system((py_CALL+std::to_string(r)+python_params).c_str());
-    /*!PYTHON CALL*/
-
-    
+   
   }
 }
+
 void ReducedModelTable(FitnessPhenotypeTable* pt) {
   pt->FIXED_TABLE=true;
   KILL_BACK_MUTATIONS=true;
@@ -68,7 +58,7 @@ void FinalModelTable(FitnessPhenotypeTable* pt) {
 
 
 void EvolvePopulation(const std::string& run_details) {
-  std::string file_simulation_details=BINARY_WRITE_FILES ? run_details+".BIN" : "_Y"+std::to_string(simulation_params::binding_threshold)+"_T"+ std::to_string(simulation_params::temperature) +"_Mu"+std::to_string(simulation_params::mu_prob)+"_Gamma"+std::to_string(simulation_params::fitness_factor)+run_details+".txt";
+  std::string file_simulation_details= run_details+".txt";
     
   std::ofstream fout_strength(file_base_path+"Strengths"+file_simulation_details,BINARY_WRITE_FILES ? std::ios::binary :std::ios::out);
   std::string fname_phenotype(file_base_path+"PhenotypeTable"+run_details+".txt");  
@@ -112,6 +102,7 @@ void EvolvePopulation(const std::string& run_details) {
   //main evolution loop
   for(uint32_t generation=0;generation<simulation_params::generation_limit;++generation) {
 
+
     //if model type is 2, update the dynamic fitness landscape
     if(simulation_params::model_type==2) {
       dfl(generation);
@@ -120,6 +111,7 @@ void EvolvePopulation(const std::string& run_details) {
     //main genotype loop
     uint16_t nth_genotype=0;
     for(PopulationGenotype& evolving_genotype : evolving_population) {
+
       
       InterfaceAssembly::Mutation(evolving_genotype.genotype);
 
@@ -133,7 +125,7 @@ void EvolvePopulation(const std::string& run_details) {
       prev_ev=evolving_genotype.pid;
 
       population_fitnesses[nth_genotype]=interface_model::PolyominoAssemblyOutcome(assembly_genotype,&pt,evolving_genotype.pid,pid_interactions);
-     
+
       
       if((simulation_params::model_type==12 && assembly_genotype.size()/4 != simulation_params::n_tiles) || (KILL_BACK_MUTATIONS && prev_ev!=evolving_genotype.pid && phen_stages.at(prev_ev)>=phen_stages.at(evolving_genotype.pid))) {
         population_fitnesses[nth_genotype]=0;

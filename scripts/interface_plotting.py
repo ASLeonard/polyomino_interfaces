@@ -80,7 +80,7 @@ def ZK(data,period=100):
      y2=y1[100:300]
      ax.RGB.quiver(x2[:-1], y2[:-1], x2[1:]-x2[:-1], y2[1:]-y2[:-1], scale_units='width',scale=5, angles='xy',zorder=10,color=phase_color)
 
-     for sample in np.random.randint(0,100,20):
+     for sample in np.random.randint(0,4,4):
           (xs,ys)=np.log10(q[sample,0:50,:]).T
           (xL,yL)=np.log10(q[sample,500:700,:]).T
           ax.RGB.quiver(xs[:-1], ys[:-1], xs[1:]-xs[:-1], ys[1:]-ys[:-1], scale_units='width',scale=20, angles='xy',zorder=10,color='dimgrey',minlength=0,alpha=0.5)

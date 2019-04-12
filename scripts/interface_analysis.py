@@ -1,37 +1,26 @@
+import subprocess
+import os
+#subprocess.run('cd ..',shell=True)
+
+#os.chdir('scripts')
 from interface_methods import *
 import numpy as np
 
-from copy import deepcopy
-from sys import argv
+
 from pickle import load,dump
-from multiprocessing import Pool
-from functools import partial
 from collections import defaultdict,Counter
-from itertools import combinations,product,groupby
-from operator import itemgetter
+from itertools import product
 import math
-import glob
 
 import warnings
 
 #GLOBAL PIDS
 null_pid,init_pid=np.array([0,0],dtype=np.uint8),np.array([1,0],dtype=np.uint8)
 
-def parallelAnalysis(S_star,t,mu,gamma,runs,offset=0,run_code='F'):
-     setBasePath('')
-     chosen_function=analysePhylogenetics if run_code=='F' else analyseHomogeneousPopulation
-     pool = Pool()
-     data_struct=pool.map(partial(chosen_function, S_star,t,mu,gamma), range(offset,offset+runs)) 
-     pool.close()
-     if run_code=='F':
-          dump(data_struct, open('Mu{}Y{}T{}F{}O{}.pkl'.format(mu,S_star,t,gamma,offset), 'wb'))
-     else:
-          np.savez_compressed('Mu{}Y{}T{}F{}O{}'.format(mu,S_star,t,gamma,offset),data_struct)
           
 def collateNPZs(S_star,t,mu,gamma,runs):
      full_data=[]
      for r in runs:
-          #return np.load(open('Mu{}Y{}T{}F{}O{}.npz'.format(mu,S_star,t,gamma,r), 'rb'))
           full_data.append(np.load(open('Mu{}Y{}T{}F{}O{}.npz'.format(mu,S_star,t,gamma,r), 'rb'))['arr_0'])
      return np.asarray(full_data)
 
@@ -78,9 +67,8 @@ def convertRaggedArray(list_of_lists):
           rect_arr[i]=strs[:long_length]+[np.nan]*(long_length-len(strs[:long_length]))
      return rect_arr
 
-def analysePhylogenetics(run,params,full_pIDs=False):
-     s,p,st,phen_table=LoadAll(run,params)
-     #print(p[0])
+def analysePhylogenetics(run,full_pIDs=False):
+     s,p,st=loadAllFiles(run,0)
      ret_val=KAG(p,s,st)
      if not ret_val:
           return None
@@ -89,6 +77,7 @@ def analysePhylogenetics(run,params,full_pIDs=False):
      bond_data=treeBondStrengths(ret_val[0],st)
      #print(bond_data.keys())
      if full_pIDs:
+          phen_table=loadPhenotypeTable(run)
           transitions={(phen_table[k[0]],phen_table[k[1]]):cnt for k,cnt in transitions.items()}
           failed_transitions={(phen_table[k[0]],phen_table[k[1]]):cnt for k,cnt in failed_transitions.items()}
           bond_data={phen_table[k]:v for k,v in bond_data.items()}
@@ -242,45 +231,6 @@ def treeBondStrengths(KAG,interactions):
           bond_data[tuple(tree.pID)].append((tree.gen,dict(bond_maps)))
      return dict(bond_data)     
 
-def plotBs(a):
-     plt.figure()
-     c=['r','b','g']
-     for i in a:
-          for g,j in enumerate(i.T):
-               plt.plot(range(1000),j,c[g])
-     plt.show(block=False)
-         
-def plotPhen2(pss):
-     ps=ObjArray([[tuple(i) for i in row]for row in pss])
-     
-     plt.figure()
-     refs=list(np.unique(ps))
-     c={K:i for i,K in enumerate(refs)}
-     z=np.zeros(ps.shape)
-     for i,j in product(range(ps.shape[0]),range(ps.shape[1])):
-          z[i,j]=c[tuple(pss[i,j])]
-     plt.pcolormesh(z.T)
-     plt.colorbar()
-     plt.show(block=False)
-     
-def plotPhen(ps):
-     plt.figure()
-     ps=[[tuple(i) for i in row]for row in ps]
-     refs=list(np.unique(ps))
-     d={K:[] for K in refs}
-     for row in ps:
-          c=Counter(row)
-          for k,v in c.items():
-               d[k].append(v)
-          for j in refs:
-               if j not in c:
-                    d[j].append(0)
-
-     for k,v in d.items():
-          plt.plot(range(len(list(d.values())[0])),d[k],label=k)
-     plt.legend()
-     #plt.yscale('log',nonposy='mask')
-     plt.show(block=False)
 
 
 def convertDoubleNestedDict(dict_in):
@@ -302,16 +252,9 @@ def checkBranchingPoint(bond,bonds):
      test_bonds=list(sum((b for b in bonds if b!= bond), ()))
      return any(x in test_bonds for x in bond)
 
-def consecutiveRanges(data):
-     return [map(itemgetter(1), g) for _,g in groupby(enumerate(data), lambda kv:(kv[0]-kv[1]))]
-
-def allUniqueBonds(bonds):
-     seen = set()
-     return not any(i in seen or seen.add(i) for i in list(sum(bonds, ())))
-
-    
-def analyseHomogeneousPopulation(run,params,temperature):
-     selections,phenotypes,st,phen_table=LoadAll(run,params)
+   
+def analyseHomogeneousPopulation(run,temperature):
+     selections,phenotypes,st=loadAllFiles(run)
      
      max_gen,pop_size=selections.shape
 
@@ -327,92 +270,63 @@ def analyseHomogeneousPopulation(run,params,temperature):
                     bonds={getBondType(bond,st[generation,species].bonds):strength for bond,strength in st[generation,species]}
                     params['a'].append((bonds[4]/bonds[2])**temperature)
                     params['b'].append((bonds[2]/bonds[3])**temperature)
-               except:
-                    #print("missed one at ",species,generation)
-                    pass
+               except KeyError:
+                    ##incomplete bonds, ignore and move on
+                    continue
+
           param_trajectory.append([np.mean(params['a']),np.mean(params['b'])])
      return np.asarray(param_trajectory)
 
-def analyseDimers(run,params):
-     selections,phenotypes,st,phen_table=LoadAll(run,params)
+
+def runEvolutionSequence():
+
+     default_parameters={'file_path' : '../bin/', 'N' : 2, 'P' : 100, 'K' : 1000, 'B' : 20, 'X': .75, 'F': 5, 'A' : 2, 'D' : 4, 'J': 5, 'M': 1, 'Y' : .6875, 'T': 10}
      
-     max_gen,pop_size=selections.shape
-     param_trajectory=np.zeros((max_gen,3))
-     #print(phenotypes[0])
-     for generation in range(max_gen):
-          params=np.zeros((pop_size,3))
-          #params=defaultdict(list)
-          for species in range(pop_size):
-               if np.array_equal(phenotypes[generation,species],null_pid):
+     print('Running evolution sequence')
+
+     def generateParameterString():
+          prm_str=''
+          for param,value in default_parameters.items():
+               if param == 'file_path':
                     continue
-               #if len(st[generation,species].bonds)!=3:
-               #     continue
-               #print(st[generation,species].bonds)
-               for bond,strength in st[generation,species]:
-                    if bond[0]==bond[1]:
-                         if bond[0]==0:
-                              params[species][0]=strength
-                         else:
-                              params[species][1]=strength
-                    else:
-                         params[species][2]=strength
+               prm_str+='-{} {} '.format(param,value)
+          return prm_str
 
-          params[params == 0] = np.nan
-          with warnings.catch_warnings():
-               warnings.simplefilter("ignore", category=RuntimeWarning)
-               param_trajectory[generation]=np.nanmean(params,axis=0)
-     return param_trajectory
-     
-               
-def main(argv):
-     model_type=int(argv[2])
-     if argv[1]=='internal':
-          
-          HPC_FLAG=argv[3]=='1'
-          run=int(argv[4])
-          format_params=tuple(float(i) for i in argv[5:9])
-          run_params=int(argv[9]) if HPC_FLAG else format_params
-          
-          if model_type==1 or model_type==0:
-               with open('Mu{2}Y{0}T{1}F{3}O{4}.pkl'.format(*format_params+(run,)),'wb') as f:
-                    dump(analysePhylogenetics(run,run_params,model_type==0),f)
-               for used_file in glob.glob('*Run{}*'.format(run)):
-                    os.remove(used_file)
-          elif model_type==2:
-               np.savez_compressed('Mu{2}Y{0}T{1}F{3}O{4}'.format(*format_params+(run,)),analyseHomogeneousPopulation(run,run_params,format_params[1]))
-          elif model_type==3:
-               np.savez_compressed('Mu{2}Y{0}T{1}F{3}O{4}'.format(*format_params+(run,)),analyseDimers(run,run_params))
-          else:
-               print("hi")
+     ##run evolution simulation given parameters 
+     subprocess.run(default_parameters['file_path']+'ProteinEvolution -E ' + generateParameterString()[:-1],shell=True)
 
-     elif argv[1]=='external':
-          format_params=tuple(float(i) for i in argv[3:7])
-          file_pth='Y{}T{}Mu{}F{}'.format(*format_params)
-          run_gen=range(int(argv[7]))
-          if model_type==1 or model_type==0:
-               with open(file_pth+'.pkl', 'wb') as f:
-                    dump(collateAnalysis(*format_params,runs=run_gen), f)
-          elif model_type==2 or model_type==3:
-               np.savez_compressed(file_pth,collateNPZs(*format_params,runs=run_gen))
-          else:
-               print("hi")
+     fname_params=tuple(float(default_parameters[k]) for k in ('Y','T','M','F'))
+
+     for run in range(default_parameters['D']):
+          analysisByMode(default_parameters['A'],run, fname_params)
+
+     collateByMode(default_parameters['A'],range(default_parameters['D']),fname_params)
+                             
+
+
+def analysisByMode(mode,run, params):
+     file_base='Mu{2}Y{0}T{1}F{3}O{4}'.format(*(params+(run,)))
+     if mode < 2:
+          analysis=analysePhylogenetics(run, mode==0)
+          with open(file_base+'.pkl','wb') as f:
+               dump(analysis,f)
+     elif mode == 2:
+          analysis=analyseHomogeneousPopulation(run,params[1])          
+          np.savez_compressed(file_base,analysis)
      else:
-          print('unknown')
-                       
-     return
+          print('unknown mode request, set parameter \'A\'')
+
+def collateByMode(mode,run_range, params):
+     file_base='Y{}T{}Mu{}F{}'.format(*params)
+     if mode < 2:
+          with open(file_base+'.pkl','wb') as f:
+               dump(collateAnalysis(*params,runs=run_range),f)
+
+     elif mode == 2:
+          np.savez_compressed(file_base,collateNPZs(*params,runs=run_range))
+          
+     else:
+          print('unknown mode request, set parameter \'A\'')
 
 if __name__ == '__main__':
-    main(argv)
-
-def PhenotypicTransitions(phen_trans,N=40,crit_factor=0.5):
-     common_transitions=deepcopy(phen_trans)
-     for phen_key,trans in phen_trans.items():
-          for tran,count in trans.items():
-               if count<N*crit_factor:
-                    del common_transitions[phen_key][tran]
-
-     for key in common_transitions.keys():
-          if not common_transitions[key]:
-               del common_transitions[key]
-     return common_transitions
-
+    runEvolutionSequence()
