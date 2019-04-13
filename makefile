@@ -21,7 +21,7 @@ OBJEXT      := o
 #VPATH=src:polyomino/src
 
 #Flags, Libraries and Includes
-CXXFLAGS    := -std=c++17 -Wall -Wextra -pedantic -pipe -O3 -fopenmp
+CXXFLAGS    := -std=c++17 -Wall -Wextra -pedantic -pipe -O3
 
 INC         := -I$(INCDIR) -I$(LIBDIR)/$(INCDIR)
 INCDEP      := -I$(INCDIR) -I$(LIBDIR)/$(INCDIR)
