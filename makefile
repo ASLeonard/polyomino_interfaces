@@ -1,4 +1,4 @@
-MAKEFLAGS+="-j $(nproc)"
+#MAKEFLAGS+="-j $(nproc)"
 
 #Compiler and Linker
 #CXX         := g++
