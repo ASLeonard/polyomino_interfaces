@@ -10,7 +10,7 @@ namespace simulation_params
   double fitness_jump=2,fitness_rise=10, fitness_factor=1;
 }
 
-
+//population structure to hold genotype and phenotype;
 struct PopulationGenotype {
   BGenotype genotype;
   Phenotype_ID pid;
@@ -28,7 +28,7 @@ void EvolutionRunner();
 void SetRuntimeConfigurations(int argc, char* argv[]);
 
 
-
+//dynamic fitness landscape, with a fixed period and exponential rise rate
 struct DynamicFitnessLandscape {
   DynamicFitnessLandscape(FitnessPhenotypeTable* pt_in,uint16_t period, uint16_t rise) : pt_iter(pt_in),period(period) {
     sharpness=rise/std::log(20);
@@ -46,8 +46,3 @@ private:
   uint16_t period;
   double sharpness;
 };
-
-template<typename T, typename A>
-void BinaryWriter(std::ofstream& bfile,const std::vector<T,A>& vec) {
-  bfile.write(reinterpret_cast<const char*>(vec.data()), vec.size()*sizeof(T));
-}
