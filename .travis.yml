@@ -1,3 +1,6 @@
+# Enable C++ support
+language: cpp
+
 matrix:
   - os: linux
     addons:
@@ -23,21 +26,6 @@ matrix:
 
 before_install:
   - eval "${MATRIX_EVAL}"
-
-  
-# Enable C++ support
-language: cpp
-
-# Compiler selection
-
-  
-install:
-  # Set the ${CXX} variable properly
-  #- export CXX=${COMPILER}
-
-
-  # Travis machines have 2 cores
-  - JOBS=2
 
 script:
   - make
