@@ -33,6 +33,10 @@ matrix:
 
 
 before_install:
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then curl "https://bootstrap.pypa.io/get-pip.py" -o "get-pip.py"; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then python3 get-pip.py --user; fi
+
+  - python3 -m pip3 install --upgrade pip3
   - pip3 install numpy --user
 
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then wget http://releases.llvm.org/8.0.0/clang+llvm-8.0.0-x86_64-apple-darwin.tar.xz; fi
