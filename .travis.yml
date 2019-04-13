@@ -6,7 +6,7 @@ dist: xenial
 # Enable C++ support
 language: cpp
 env:
-  python: '3.6'
+  python: '3.6.7'
 matrix:
   include:
     - env: COMPILER=clang++
@@ -40,9 +40,10 @@ before_install:
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then export LLVM_DIR=${TRAVIS_BUILD_DIR}/clang+llvm-8.0.0-x86_64-apple-darwin; fi
 
 install:
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then export CXX=LLVM_DIR=${TRAVIS_BUILD_DIR}/clang+llvm-8.0.0-x86_64-apple-darwin/bin/${COMPILER}; fi
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then export CXX=${TRAVIS_BUILD_DIR}/clang+llvm-8.0.0-x86_64-apple-darwin/bin/${COMPILER}; fi
   - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then export CXX=${COMPILER}; fi
 
 script:
+  - echo $CXX
   - $CXX --version
   - make && make test
