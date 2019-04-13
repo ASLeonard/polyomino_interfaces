@@ -43,9 +43,9 @@ before_install:
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then export LLVM_DIR=${TRAVIS_BUILD_DIR}/clang+llvm-8.0.0-x86_64-apple-darwin; fi
 
 install:
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then export CXX=${TRAVIS_BUILD_DIR}/clang+llvm-8.0.0-x86_64-apple-darwin/bin/${COMPILER}; fi
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then export PATH=${TRAVIS_BUILD_DIR}/clang+llvm-8.0.0-x86_64-apple-darwin/bin/:$PATH; fi
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then export LD_LIBRARY_PATH=${TRAVIS_BUILD_DIR}/clang+llvm-8.0.0-x86_64-apple-darwin/lib/:$LD_LIBRARY_PATH; fi
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then export CXX=${COMPILER}; fi #${TRAVIS_BUILD_DIR}/clang+llvm-8.0.0-x86_64-apple-darwin/bin/${COMPILER}; fi
+  #- if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then export PATH=${TRAVIS_BUILD_DIR}/clang+llvm-8.0.0-x86_64-apple-darwin/bin/:$PATH; fi
+  '- if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then export LD_LIBRARY_PATH=${TRAVIS_BUILD_DIR}/clang+llvm-8.0.0-x86_64-apple-darwin/lib/:$LD_LIBRARY_PATH; fi
 
   - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then export CXX=${COMPILER}; fi
 

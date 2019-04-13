@@ -1,6 +1,6 @@
 ## Binary polyomino self-assembly
 [![Codacy Badge](https://api.codacy.com/project/badge/Grade/7ffdd17eae624212ac2686d48687d343)](https://app.codacy.com/app/ASLeonard/polyomino_interfaces?utm_source=github.com&utm_medium=referral&utm_content=ASLeonard/polyomino_interfaces&utm_campaign=Badge_Grade_Dashboard)
-[![License Badge](https://img.shields.io/github/license/ASLeonard/polyomino_interfaces.svg?style=plastic)]
+![License Badge](https://img.shields.io/github/license/ASLeonard/polyomino_interfaces.svg?style=flat)
 
 Polyomimo lattice self-assembly model with binary string interfaces.
 
