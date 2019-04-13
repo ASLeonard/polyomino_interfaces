@@ -10,6 +10,7 @@ BASE_PATH=''
 interface_length=64
 interface_type=np.uint64
 
+##two utility methods to set the directory for files and the interface length used to cast values
 def setBasePath(path):
      default_file='/{}_Run{}.txt'
           
@@ -22,14 +23,8 @@ def setLength(length):
      interface_length=length
      global interface_type
      interface_type={8:np.uint8,16:np.uint16,32:np.uint32,64:np.uint64}[interface_length]
-
-             
-def BindingStrength(base1,base2):
-     return 1-bin(np.bitwise_xor(interface_type(base1),reverseBits(base2))).count('1')/interface_length
-
-def reverseBits(value):
-    return ~interface_type(int(('{:0'+str(interface_length)+'b}').format(value)[::-1],2))
-
+     
+##lightweight structure to hold information on assembly graph edges and weights
 class Interactions(object):
      __slots__ = ('bonds','strengths')
      
@@ -43,7 +38,8 @@ class Interactions(object):
                
      def __repr__(self):
           return "{} interactions".format(len(self.bonds))
-          
+
+##loading methods to read simulation data from files
 def loadSelectionHistory(run):
      selections=[]
      for line in open(BASE_PATH.format('Selections',run)):
@@ -89,6 +85,7 @@ def loadAllFiles(run,cwd=None):
  
      return (s,p,st)
 
+##cast a given array into a numpy ndarray maintaining shape
 def ObjArray(data):
      shape=(len(data),len(data[0]))
      nparr=np.empty(shape,dtype=object)
