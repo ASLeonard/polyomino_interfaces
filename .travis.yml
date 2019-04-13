@@ -13,7 +13,7 @@ matrix:
       os: osx
       osx_image: xcode10.2
 
-    - env: COMPILER=clang++-7 
+    - env: COMPILER=clang++-76
       addons: &clang70
         apt:
           packages:
@@ -21,7 +21,7 @@ matrix:
             - g++-7
           sources:
             - ubuntu-toolchain-r-test
-            - llvm-toolchain-trusty-7
+            - llvm-toolchain-xenial-6
 
     - env: COMPILER=g++-7
       addons: &gcc7
@@ -33,11 +33,11 @@ matrix:
 
 
 before_install:
-  - pip install numpy
-  #- sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
-  #- sudo apt-get update -q
-  #- sudo apt-get install -y g++-7
-  #- export CXX=/usr/bin/g++-7
+  - pip install numpy --user
+
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then wget http://releases.llvm.org/8.0.0/clang+llvm-8.0.0-x86_64-apple-darwin.tar.xz; fi
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then tar -xf clang+llvm-8.0.0-x86_64-apple-darwin.tar.xz; fi
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then export LLVM_DIR=${TRAVIS_BUILD_DIR}/clang+llvm-8.0.0-x86_64-apple-darwin; fi
 
 install:
   - export CXX=${COMPILER}
