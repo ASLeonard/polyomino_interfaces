@@ -40,7 +40,7 @@ before_install:
 
   - pip3 install numpy --user
 
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then curl -# -o clang8.tar.xz http://releases.llvm.org/8.0.0/clang+llvm-8.0.0-x86_64-apple-darwin.tar.xz; fi
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then wget -o clang8.tar.xz http://releases.llvm.org/8.0.0/clang+llvm-8.0.0-x86_64-apple-darwin.tar.xz; fi
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then tar -xf clang8.tar.xz; fi
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then export LLVM_DIR=${TRAVIS_BUILD_DIR}/clang8; fi
 
