@@ -5,15 +5,13 @@ os: linux
 dist: xenial
 # Enable C++ support
 language: cpp
-
+env:
+  python: '3.6'
 matrix:
   include:
     - env: COMPILER=clang++
       os: osx
-      osx_image: xcode9.4
-
-    - env: COMPILER=g++
-      os: windows
+      osx_image: xcode10.2
 
     - env: COMPILER=clang++-7 
       addons: &clang70
@@ -34,7 +32,8 @@ matrix:
 
 
 
-#before_install:
+before_install:
+  - pip install numpy
   #- sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
   #- sudo apt-get update -q
   #- sudo apt-get install -y g++-7
@@ -44,4 +43,5 @@ install:
   - export CXX=${COMPILER}
 
 script:
-  - make
+  - $CXX --version
+  - make && make test

@@ -61,7 +61,7 @@ def collateAnalysis(S_star,t,mu,gamma,runs):
      ##read raw data into objects
      for str_evo,phen_tran,fails in filter(None,full_data):
           N_runs+=1
-          for data_strc, data_in in ((full_transitions,phen_tran),(failed_jumps,fails)):
+          for data_strc, data_in in ((full_transition,phen_tran),(failed_jumps,fails)):
                for (phen_in,phen_out),count in data_in.items():
                     data_strc[phen_in][phen_out]+=count
                
@@ -328,13 +328,11 @@ def runEvolutionSequence():
      ##change parameters here for data generation
      
      ##defaults well-suited for generating evolution of fixed system
-     default_parameters={'file_path' : '../bin/', 'N' : 2, 'P' : 100, 'K' : 400, 'B' : 100, 'X': .5, 'F': 5, 'A' : 1, 'D' : 1, 'J': 5, 'M': 1, 'Y' : .6875, 'T': 10, 'O' : 100, 'G' : 10} 
+     default_parameters={'file_path' : 'bin/', 'N' : 2, 'P' : 100, 'K' : 400, 'B' : 20, 'X': .5, 'F': 5, 'A' : 1, 'D' : 1, 'J': 5, 'M': 1, 'Y' : .6875, 'T': 10, 'O' : 100, 'G' : 10} 
 
      ##defaults for dynamic fitness landscape 
-     #default_parameters={'file_path' : '../bin/', 'N' : 2, 'P' : 100, 'K' : 600, 'B' : 150, 'X': 0, 'F': 1, 'A' : 2, 'D' : 1, 'J': 1, 'M': 1, 'Y' : .6875, 'T': 25, 'O' : 200, 'G' : 10} 
+     #default_parameters={'file_path' : 'bin/', 'N' : 2, 'P' : 100, 'K' : 600, 'B' : 150, 'X': 0, 'F': 1, 'A' : 2, 'D' : 1, 'J': 1, 'M': 1, 'Y' : .6875, 'T': 25, 'O' : 200, 'G' : 10} 
 
-
-     print('Running evolution sequence')
 
      def generateParameterString():
           prm_str=''
@@ -345,15 +343,18 @@ def runEvolutionSequence():
           return prm_str
 
      ##run evolution simulation given parameters
-     subprocess.run(default_parameters['file_path']+'ProteinEvolution -E ' + generateParameterString()[:-1],shell=True)
+     print('Running evolution sequence')
+     subprocess.run(default_parameters['file_path']+'ProteinEvolution -E ' + generateParameterString()[:-1],shell=True,check=True)
 
      fname_params=tuple(float(default_parameters[k]) for k in ('Y','T','M','F'))
 
      ##run analysis
+     print('Running analysis')
      for run in range(default_parameters['D']):
           analysisByMode(default_parameters['A'],run, fname_params)
 
      ##run compilation of results
+     print('Collating analysis sequence')
      collateByMode(default_parameters['A'],range(default_parameters['D']),fname_params)
                              
 
@@ -383,4 +384,12 @@ def collateByMode(mode,run_range, params):
           print('unknown mode request, set parameter \'A\'')
 
 if __name__ == '__main__':
-    runEvolutionSequence()
+     try:
+          runEvolutionSequence()
+     except Exception as e:
+          print(e)
+     else:
+          print('Data generation sequence successful')
+          sys.exit(0)
+     print('Something went wrong, data generation potentially incomplete')
+     sys.exit(1)
