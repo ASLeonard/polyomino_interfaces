@@ -6,20 +6,16 @@ if not any(('scripts' in pth for pth in sys.path)):
      sys.path.append('scripts/')
      sys.path.append('../polyomino_core/scripts')
 
-from polyomino_visuals import VisualiseSingleShape as VSS
 from interface_analysis import *
 from interface_methods import *
 
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1.axes_rgb import RGBAxes
 
-from matplotlib.patches import Rectangle,ConnectionPatch
-from matplotlib.colors import LinearSegmentedColormap, LogNorm
-
+from matplotlib.colors import LinearSegmentedColormap
 
 from itertools import product
 from collections import defaultdict
-
 
 
 
@@ -38,9 +34,7 @@ def plotEvolution(evo_data_struct,add_samps=False):
      ##plotting parameters
      phen_cols={(1,0):'dimgrey',(2,0):'firebrick',(4,0):'olivedrab',(4,1):'darkblue',(8,0):'chocolate',(3,0):'goldenrod',(12,0):'k',(16,0):'k',(12,1):'chartreuse'}
      bond_marks={1:'o',2:'s',3:'v',4:'^'}
-     bond_ls={1:'-',2:':',3:'-.',4:'--'}
-     c_ls={1:'c',2:'m',3:'w.',4:'k'}
-     N_markers=6
+
      MAX_G=250
 
      ##possible ancestors of each pid
@@ -69,7 +63,7 @@ def plotEvolution(evo_data_struct,add_samps=False):
            
 
           ##iterate over each edge in the assembly graph
-          for i,((bond,new),strs) in enumerate(data.items()):
+          for (bond,new),strs in data.items():
                if new not in ancestors[phen]:
                     continue
                ancestor_p=ancestors[phen][new]
@@ -203,7 +197,7 @@ def plot2D(low=-1,high=1,res=250,called=False):
      xx,yy=np.meshgrid(np.logspace(low,high,res),np.logspace(low,high,res))
      xxL,yyL=np.meshgrid(np.linspace(low,high,res),np.linspace(low,high,res))
 
-     ##calculate all 3 polyomino abundances for the grid 
+     ##calculate all 3 polyomino abundances for the grid
      rgb=np.array(Twelve(xx,yy))
 
      ##set up special RGB axis
@@ -221,16 +215,15 @@ def plot2D(low=-1,high=1,res=250,called=False):
                     change_points[(min(row[change-1],row[change]),max(row[change-1],row[change]))].append((r_idx,change))
           return change_points
 
-     ##get boundaries and plot 
+     ##get boundaries and plot
      boundaries=getBoundaries(np.argmax(rgb,axis=0))
      for bound in boundaries.values():
           ax.RGB.plot([xxL[b] for b in bound],[yyL[b] for b in bound],'k',ls='-',lw=3)
 
      ##add contour lines for polyomino abundance on each colour channel
      for i,(channel,ax_c) in enumerate(zip(rgb,[ax.R,ax.G,ax.B])):
-          CS=ax_c.contour(channel, levels=20, colors='dimgrey',linewidths=.5, origin='lower',extent=[low,high]*2)
+          ax_c.contour(channel, levels=20, colors='dimgrey',linewidths=.5, origin='lower',extent=[low,high]*2)
 
-          
      if called:
           return ax
      plt.show(block=False)
@@ -266,7 +259,7 @@ def plotPhaseSpace(evo_data,low=-2,high=2,res=250):
                continue
 
           ##if 12-mer, plot on its 2D phase space
-          if phen==(12,0):              
+          if phen==(12,0):
                ec='w'
                ax_2d.RGB.scatter(*np.log10(phase_p),marker=phen_mark[phen_source],c=fc,edgecolors=ec,s=m_size,label=phen_source,lw=2,zorder=10)
           ##otherwise plot on 1D phase space (for heterotetramer and 16-mer)
@@ -313,6 +306,6 @@ def plotDynamicLandscape(data,period=100):
                ax.G.plot(x1[i:i+period],y1[i:i+period],alpha=0.5,c='aqua')
           else:
                ax.B.plot(x1[i:i+period],y1[i:i+period],alpha=0.5,c='mistyrose')
-     
+
      plt.show(block=False)
      return

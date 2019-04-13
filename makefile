@@ -1,7 +1,7 @@
 MAKEFLAGS+="-j $(nproc)"
 
 #Compiler and Linker
-CXX         := g++
+#CXX         := g++
 
 #The Target Binary Program
 PE_TARGET   := ProteinEvolution
@@ -21,12 +21,7 @@ OBJEXT      := o
 #VPATH=src:polyomino/src
 
 #Flags, Libraries and Includes
-CXXFLAGS    := -std=gnu++17 -Wall -Wextra -pedantic -pipe -march=haswell -flto -flto-partition=none -no-pie -ffunction-sections -fdata-sections $(cmdflag)
-ifndef DEBUG
-CXXFLAGS += -O3 -fopenmp
-else
-CXXFLAGS += -pg -ggdb
-endif
+CXXFLAGS    := -std=c++17 -Wall -Wextra -pedantic -pipe -O3 -fopenmp
 
 INC         := -I$(INCDIR) -I$(LIBDIR)/$(INCDIR)
 INCDEP      := -I$(INCDIR) -I$(LIBDIR)/$(INCDIR)

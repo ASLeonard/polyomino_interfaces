@@ -238,7 +238,7 @@ def calcTransitionParams(evo_strs,transitions,T,S_star):
                     param_dict[(1,(12,0),(4,1))]=((evo_strs[(4,1)][(4,3)][-1]/S_star)**T,(S_star/evo_strs[(4,1)][(3,3)][-1])**T)
                param_dict[(0,(12,0),(4,1))]=((evo_strs[(12,0)][(4,2)][0]/evo_strs[(12,0)][(2,2)][0])**T,(evo_strs[(12,0)][(2,2)][0]/evo_strs[(12,0)][(3,2)][0])**T)
                param_dict[(0,(12,0),(12,0))]=((evo_strs[(12,0)][(4,2)][-1]/evo_strs[(12,0)][(2,2)][-1])**T,(evo_strs[(12,0)][(2,2)][-1]/evo_strs[(12,0)][(3,2)][-1])**T)
-                    
+
           if (8,0) in transitions[(12,0)]:
                if (2,0) in transitions[(8,0)]:
                     param_dict[(1,(12,0),(8,0))]=((S_star/evo_strs[(8,0)][(1,1)][-1])**T,(evo_strs[(8,0)][(2,2)][-1]/evo_strs[(8,0)][(1,2)][-1])**T)
