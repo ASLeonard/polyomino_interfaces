@@ -6,7 +6,7 @@
 Polyomimo lattice self-assembly model with binary string interfaces.
 
 ### Core modules
-Majority of polyomino core features are found in the `polyomino_core' submodule.
+The majority of polyomino core features are found in the `polyomino_core' submodule, designed to provide a single, consistent set of definitions in all models.
 A direct link to the current core development is [here](https://github.com/ASLeonard/polyomino_core).
 
 ### Installation
