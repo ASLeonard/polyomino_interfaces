@@ -16,14 +16,20 @@ git clone --recurse-submodules https://github.com/ASLeonard/polyomino_interfaces
 cd polyomino_interfaces
 make
 ```
+At which point the simulation program is in `/bin/ProteinEvolution`.
 Errors at this stage probably indicate the compiler (or the CXX environment variable) is not modern enough.
+
+Several compiler flags can be added depenending on what is available on the user's system if desired, like g++ has support for multi-threading (-fopenmp) and link-time optimization (-flto).
 
 #### Python requirements
 The analysis and plotting has been tested with the following versions, although many older/newer versions are likely to work. These are common packages, but not always installed by default.
-+ python (3.65)
-+ SciPy (1.2.1)
++ python (3.6.5)
 + Numpy (1.16.2)
 + Matplotlib (3.03)
++ SciPy (1.2.1) (only necessary for scripts within **polyomino_core**, not used by default)
+
+#### Testing
+The install, c++, and python can be tested after making, by calling `make test`. This will run an evolution simulation with default parameters, analyse the generated files, save the analysis, and then erase all the generated files and analysis.
 
 #### Directory layout
 The main folders of interest are bin/ and scripts/, although a more curious user can modify the c++ in the other folders.

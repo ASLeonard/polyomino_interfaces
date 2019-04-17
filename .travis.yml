@@ -9,10 +9,6 @@ env:
   python: '3.6.7'
 matrix:
   include:
-    - env: COMPILER=clang++
-      os: osx
-      osx_image: xcode10.2
-
     - env: COMPILER=clang++-7
       addons: &clang70
         apt:
@@ -29,27 +25,16 @@ matrix:
           packages: g++-7
           sources:
             - ubuntu-toolchain-r-test
-  allow_failures:
-    - os: osx
 
 
 
 before_install:
-  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then curl "https://bootstrap.pypa.io/get-pip.py" -o "get-pip.py"; fi
-  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then python3 get-pip.py --user; fi
-
+  - curl "https://bootstrap.pypa.io/get-pip.py" -o "get-pip.py"
+  - python3 get-pip.py --user
   - pip3 install numpy --user
 
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then wget http://releases.llvm.org/8.0.0/clang+llvm-8.0.0-x86_64-apple-darwin.tar.xz; fi
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then tar -xf clang+llvm-8.0.0-x86_64-apple-darwin.tar.xz; fi
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then export LLVM_DIR=${TRAVIS_BUILD_DIR}/clang+llvm-8.0.0-x86_64-apple-darwin; fi
-
 install:
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then export CXX=${TRAVIS_BUILD_DIR}/clang+llvm-8.0.0-x86_64-apple-darwin/bin/${COMPILER}; fi
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then export PATH=${TRAVIS_BUILD_DIR}/clang+llvm-8.0.0-x86_64-apple-darwin/bin:$PATH; fi
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then export LD_LIBRARY_PATH=${TRAVIS_BUILD_DIR}/clang+llvm-8.0.0-x86_64-apple-darwin/lib:$LD_LIBRARY_PATH; fi
-
-  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then export CXX=${COMPILER}; fi
+  - export CXX=${COMPILER}
 
 script:
   - echo $CXX

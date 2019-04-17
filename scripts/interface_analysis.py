@@ -136,7 +136,7 @@ def KAG(phenotypes_in,selections,interactions):
           def __valid_descendent(gen_idx,kid):
                return (np.array_equal(phenotypes_in[gen_idx+1,kid],tree.pID) and interactions[gen_idx+1,kid].bonds==tree.bonds)
 
-          ##iterate down tree while possible
+          ##iterate down tree while possible, up to a max_depth if set
           while gen_val<(max_gen-1):
                new_descendents=[child for descendent in descendents for child in np.where(selections[gen_val]==descendent)[0] if __valid_descendent(gen_val,child)]
                     
@@ -192,21 +192,24 @@ def KAG(phenotypes_in,selections,interactions):
 
           ##iterate backwards through tree finding new branches
           while g_idx>0:
-               ##if parent is null, has been found already
+               ##if parent is null, this tree has been found already
                if np.array_equal(phenotypes[g_idx-1,p_idx],null_pid):
+                    ##the phenotypes of parent and child are the same, but bonds aren't, discard it
                     if np.array_equal(phenotypes_in[g_idx-1,p_idx],pid_ref):
                          temp_forest.append((False,Tree(pid_ref,bond_ref,(-1,-1),g_idx,[[c_idx]])))
+                    ##found a new transition to add as a branch
                     else:
                          if not __addBranch():
                               return None
                          break
-               ##if not equal, found a transition, add branch at this point
+
+               ##if not equal, found a new transition, add branch at this point
                elif not np.array_equal(phenotypes[g_idx-1,p_idx],pid_ref):
                     if not __addBranch():                         
                          return None
                     bond_ref=interactions[g_idx-1,p_idx].bonds
                     pid_ref=phenotypes[g_idx-1,p_idx]
-                    
+               ##tree has not been found already, but different bonds, so discard it
                elif interactions[g_idx-1,p_idx].bonds !=bond_ref:
                     temp_forest.append((False,Tree(pid_ref,bond_ref,(-1,-1),g_idx,[[c_idx]])))
                     bond_ref=interactions[g_idx-1,p_idx].bonds
@@ -215,9 +218,11 @@ def KAG(phenotypes_in,selections,interactions):
                g_idx-=1
                c_idx=p_idx
                p_idx=selections[g_idx-1,p_idx]
+          ##loop has finished, add last generation
           else:
                if not np.array_equal(pid_ref,init_pid) and not __addBranch():
                     return None
+
           ##look back at roots of new branches and extend them if valid
           while temp_forest:
                (alive,tree)=temp_forest.pop()
@@ -248,7 +253,7 @@ def KAG(phenotypes_in,selections,interactions):
      
      return (forest,dict(transitions),dict(failed_jumps))
 
-##calculate strengths of each part of the tree
+##calculate strengths of each bond at each leaf of a tree
 def treeBondStrengths(KAG,interactions):
      bond_data=defaultdict(list)
      for tree in KAG:
@@ -260,7 +265,8 @@ def treeBondStrengths(KAG,interactions):
                     break
                max_pop=max(max_pop,len(populations))
                inner_bond_maps=defaultdict(list)
-               ##find strengths for all bonds, and get bond topology
+
+               ##find strengths for all bonds, and store results by bond topology
                for species in populations:
                     all_bonds=interactions[generation,species].bonds
                     new_bond_type=getBondType(tree.new_bond,all_bonds)
@@ -333,7 +339,7 @@ def runEvolutionSequence():
      ##defaults for dynamic fitness landscape 
      #default_parameters={'file_path' : 'bin/', 'N' : 2, 'P' : 100, 'K' : 600, 'B' : 150, 'X': 0, 'F': 1, 'A' : 2, 'D' : 1, 'J': 1, 'M': 1, 'Y' : .6875, 'T': 25, 'O' : 200, 'G' : 10} 
 
-
+     ##helper method to stringify parameters
      def generateParameterString():
           prm_str=''
           for param,value in default_parameters.items():
@@ -358,7 +364,7 @@ def runEvolutionSequence():
      collateByMode(default_parameters['A'],range(default_parameters['D']),fname_params)
                              
 
-
+##run analysis type, either for static landscapes or dynamic landscapes with single assembly graph
 def analysisByMode(mode,run, params):
      file_base='Mu{2}Y{0}T{1}F{3}O{4}'.format(*(params+(run,)))
      if mode < 2:
@@ -371,6 +377,7 @@ def analysisByMode(mode,run, params):
      else:
           print('unknown mode request, set parameter \'A\'')
 
+##after all analyses are finished, go back and collect all the results and averages into a single file
 def collateByMode(mode,run_range, params):
      file_base='Y{}T{}Mu{}F{}'.format(*params)
      if mode < 2:
