@@ -18,12 +18,27 @@ from itertools import product
 from collections import defaultdict
 
 
+     
+##example sequence of loading data and plotting
+def examplePlot():
+    ##if data not generated and analysed, can uncomment and run below line
+    #runEvolutionSequence()
+
+    ##load the data from the pickle file (should be placed in this directory_
+    data=loadPickle(.6875,25,1,5)
+
+    ##plot the data as in Fig 4, and then print pathway success as in Fig 6
+    calculatePathwaySucess(data)
+    plotEvolution(data,True,False)
+    
+
+
 
 ##plot evolution of phenotypes over time, used in Fig 4
 ##parameters
 ##evo_data (custom structure from loadPickle method): structure holding simulation results
 ##add_samps (bool): if false plots only bulk trends, if true plots a sample of individual simulations
-def plotEvolution(evo_data_struct,add_samps=False):
+def plotEvolution(evo_data_struct,add_samps=False,interactive_mode=True):
 
      ##pull simulation parameters from data structure
      evo_data=evo_data_struct.evo_strs
@@ -54,13 +69,12 @@ def plotEvolution(evo_data_struct,add_samps=False):
 
           ##set panel border colour
           plt.setp(ax_d[phen].spines.values(), color=phen_cols[phen],lw=(2 if phen[0]<10 else 1))
-          
+
           ##plot baseline and random walk expectation
           ax_d[phen].axhline(S_star,c='k',ls='-',lw=0.75)
           max_len=min(MAX_G,max(len(vals) for vals in data.values()))
           ax_d[phen].plot(range(max_len+1),RandomWalk(64,max_len,mu*1./6,S_star,False),ls='--',c='k',zorder=20)
 
-           
 
           ##iterate over each edge in the assembly graph
           for (bond,new),strs in data.items():
@@ -83,18 +97,17 @@ def plotEvolution(evo_data_struct,add_samps=False):
 
                ##plot averaged edge trend given plotting parameters above
                plotValues(strs,1)
-               
+
                ##if adding sampled individual runs, plot now
                if add_samps and evo_data_samp is not None:
                    for samp in evo_data_samp[phen][(bond,new)]:
                         plotValues(samp,.2)
 
-               
      ##add labels
      f.tight_layout()
      axarr[1,1].set_xlabel('generations')
      axarr[1,0].set_ylabel(r'$\langle \hat{S} \rangle$')
-     plt.show(block=False)
+     plt.show(block= not interactive_mode)
 
 
 ##print the transition success rates used in Fig 6
@@ -120,12 +133,12 @@ def calculatePathwaySucess(evo_data):
                
                ##get total number of failed transitions
                fail_rate=0
-               if parent in failed:
-                    if child in failed[parent]:
-                         fail_rate=failed[parent][child]
+               if child in failed:
+                    if parent in failed[child]:
+                         fail_rate=failed[child][parent]
 
                ##print formatted success/fail rates
-               print('{}→{} with {} successes and {} failures ({:.2f}%)'.format(parent,child,count,fail_rate,count/(count+fail_rate)))
+               print('{}→{} with {} successes and {} failures ({:.2f}%)'.format(parent,child,count,fail_rate,100*count/(count+fail_rate)))
 
 ##plot grid of parameters for the 16-mer phenotype, used in S1 Fig
 ##parameters are
@@ -287,12 +300,12 @@ def plotDynamicLandscape(data,period=100):
      ##great 2 colour gradients for the fitness landscape changing
      c_grad_1 = LinearSegmentedColormap.from_list('grad_1', ['aqua','darkblue'], N=period)
      c_grad_2 = LinearSegmentedColormap.from_list('grad_2', ['mistyrose','firebrick'], N=period)
-     
+
      ##create colour list with changing landscape
      phase_color=[]
      for _ in range(data.shape[1]//period//2):
           phase_color.extend(list(c_grad_1(np.linspace(0,1,period)))+list(c_grad_2(np.linspace(0,1,period))))
-          
+
      ##can the data burn in a few hundred generations
      burn_in=0
      (x1,y1)=np.log10(np.mean(data[:,burn_in:,:],axis=0)).T
@@ -309,3 +322,14 @@ def plotDynamicLandscape(data,period=100):
 
      plt.show(block=False)
      return
+
+if __name__ == '__main__':
+     try:
+          examplePlot()
+     except Exception as e:
+          print(e)
+     else:
+          print('Plotting sequence successful')
+          sys.exit(0)
+     print('Something went wrong, data loading or plotting potentially incomplete')
+     sys.exit(1)

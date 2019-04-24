@@ -6,11 +6,20 @@
 #include "core_evolution.hpp"
 
 //using interfaces of 64 bits length, can use any width of unsigned integer
+//i.e. can alternatively use uint8_t, uint16_t, uint32_t
+//[UNTESTED] potentially could use further width types, like the GNU specific "unsigned __int128" 
 using interface_type = uint64_t;
 
 //set genotype to be a vector of these elements
 constexpr uint8_t interface_size=CHAR_BIT*sizeof(interface_type);
 using BGenotype = std::vector<interface_type>;
+
+//parameters used
+namespace simulation_params
+{
+  extern uint8_t model_type,n_tiles,samming_threshold;
+  extern double temperature,binding_threshold,mu_prob;
+}
 
 //extension of base assembly (in polyomino_core/include/core_genotype)
 class InterfaceAssembly : public PolyominoAssembly<InterfaceAssembly> {
@@ -31,14 +40,6 @@ public:
   static double InteractionMatrix(const interface_type, const interface_type);
   static void Mutation(BGenotype& genotype);  
 };
-
-//parameters used
-namespace simulation_params
-{
-  extern uint8_t model_type,n_tiles,samming_threshold;
-  extern uint16_t dissociation_time;
-  extern double temperature,binding_threshold,mu_prob;
-}
 
 
 namespace interface_model

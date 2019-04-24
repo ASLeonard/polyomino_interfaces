@@ -53,12 +53,12 @@ test:
 	@echo "Running basic test to check c++ and python3 integration\nRunning default generation and analysis"
 	@python3 scripts/interface_analysis.py
 	@echo "Test seems successful, cleaning up generated files"
-	@rm PIDs_Run0.txt
-	@rm Strengths_Run0.txt
-	@rm PhenotypeTable_Run0.txt
-	@rm Selections_Run0.txt
-	@rm Y0.6875T10.0Mu1.0F5.0.pkl
-	@rm Mu1.0Y0.6875T10.0F5.0O0.pkl
+	@rm PIDs_Run*.txt
+	@rm Strengths_Run*.txt
+	@rm PhenotypeTable_Run*.txt
+	@rm Selections_Run*.txt
+	@rm Y*.pkl
+	@rm Mu*.pkl
 
 
 #Compile

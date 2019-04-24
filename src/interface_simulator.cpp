@@ -1,21 +1,18 @@
 #include "interface_simulator.hpp"
 #include <iostream>
 
-
+//internal flag to limit fatal mutations to less fit phenotypes
 bool KILL_BACK_MUTATIONS=false;
 
 //set the file path to be where the (large) files will be written, by default the location where the 
 const std::string file_base_path="";
-const std::map<Phenotype_ID,uint8_t> phen_stages{{{0,0},0},{{10,0},4},{{1,0},1},{{2,0},2},{{4,0},2},{{4,1},3},{{8,0},3},{{12,0},4},{{16,0},4}};
 
-void EvolutionRunner() {
-  
+//wrapper to run many (parallel) independent evolutions
+void EvolutionRunner() {  
   const uint16_t N_runs=simulation_params::independent_trials;
 #pragma omp parallel for schedule(dynamic) 
-  for(uint16_t r=0;r < N_runs;++r) {
+  for(uint16_t r=0;r < N_runs;++r)
     EvolvePopulation("_Run"+std::to_string(r+simulation_params::run_offset));
-   
-  }
 }
 
 //populate fixed phenotype table with example system
@@ -50,8 +47,10 @@ void FinalModelTable(FitnessPhenotypeTable* pt) {
   pt->phenotype_fitnesses[10].emplace_back(0);
 }
 
+//vertical columns of phenotype subset
+const std::map<Phenotype_ID,uint8_t> phen_stages{{{0,0},0},{{10,0},4},{{1,0},1},{{2,0},2},{{4,0},2},{{4,1},3},{{8,0},3},{{12,0},4},{{16,0},4}};
 
-
+//main evolution simulator function
 void EvolvePopulation(const std::string& run_details) {
 
   //create file names and make text files
@@ -86,17 +85,13 @@ void EvolvePopulation(const std::string& run_details) {
     break;
   }
   
-  
-
-  
   //main evolution loop
   for(uint32_t generation=0;generation<simulation_params::generation_limit;++generation) {
 
 
     //if model type is 2, update the dynamic fitness landscape
-    if(simulation_params::model_type==2) {
+    if(simulation_params::model_type==2)
       dfl(generation);
-    }
 
     //main genotype loop
     uint16_t nth_genotype=0;
@@ -125,8 +120,6 @@ void EvolvePopulation(const std::string& run_details) {
 
       //increment genotype index
       ++nth_genotype;
-
-
 
       //print generation results to file
       for(auto x : pid_interactions)
@@ -183,7 +176,7 @@ int main(int argc, char* argv[]) {
   case 'H':
   default:
     std::cout<<"Polyomino interface model\n**Simulation Parameters**\nN: number of tiles\nP: population size\nK: generation limit\nB: number of phenotype builds\n";
-    std::cout<<"\n**Model Parameters**\nA: model type (0 is free evolution, 1 is sample system, 2 is dynamic landscape)\nM: mutation probability\nT: temperature\nI: unbound size factor\n\nF: nondeterminism punishment factor\nJ: fitness jump\nO: dynamic landscape period\nG: landscape rise rate\n";
+    std::cout<<"\n**Model Parameters**\nA: model type (0 is free evolution, 1 is sample system, 2 is dynamic landscape)\nM: average mutations per genotype\nT: temperature\nY: critical interaction strength\nX: minimum determinism limit\nF: nondeterminism punishment factor\nJ: fitness jump\nO: dynamic landscape period\nG: landscape rise rate\n";
     std::cout<<"\n**Run options**\nD: number of runs\nV: run offset value\n";
     break;
   }
@@ -211,7 +204,7 @@ void SetRuntimeConfigurations(int argc, char* argv[]) {
 
         /*! simulation specific */
         
-        //DONE IN INIT FILE
+
       case 'M': simulation_params::mu_prob=std::stod(argv[arg+1]);break;
       case 'Y': simulation_params::binding_threshold=std::stod(argv[arg+1]);break;
       case 'T': simulation_params::temperature=std::stod(argv[arg+1]);break;

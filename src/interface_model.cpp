@@ -3,7 +3,6 @@
 
 namespace simulation_params
 {
-  uint16_t dissociation_time=0;
   uint8_t n_tiles=2,model_type=0,samming_threshold=10;
   double temperature=0,binding_threshold=1,mu_prob=1;
 }

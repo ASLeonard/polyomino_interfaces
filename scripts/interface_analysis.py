@@ -158,7 +158,7 @@ def KAG(phenotypes_in,selections,interactions):
                     return True
 
      ##helper method to identify where a tree branches into a new ancestry
-     def __addBranch():        
+     def __addBranch():
           if g_idx:
                if len(bond_ref)<len(interactions[g_idx-1,p_idx].bonds):
                     return False;
@@ -205,7 +205,7 @@ def KAG(phenotypes_in,selections,interactions):
 
                ##if not equal, found a new transition, add branch at this point
                elif not np.array_equal(phenotypes[g_idx-1,p_idx],pid_ref):
-                    if not __addBranch():                         
+                    if not __addBranch():
                          return None
                     bond_ref=interactions[g_idx-1,p_idx].bonds
                     pid_ref=phenotypes[g_idx-1,p_idx]
@@ -247,7 +247,7 @@ def KAG(phenotypes_in,selections,interactions):
           if not np.array_equal(pid_c,pid_d):
                if np.count_nonzero(evo_stage[g_idx]>=len(interactions[g_idx,c_idx].bonds))>POPULATION_FIXATION:
                     continue
-               ##only consider it failed if it "should" have survived based on fitness advantage 
+               ##only consider it failed if it "should" have survived based on fitness advantage
                if not __growDescendentTree(Tree(pid_c,interactions[g_idx,c_idx].bonds,(-1,-1),g_idx,[[c_idx]]),SURVIVAL_DEPTH):
                     failed_jumps[tuple(tuple(_) for _ in (pid_c,pid_d))]+=1
      
@@ -329,15 +329,17 @@ def analyseHomogeneousPopulation(run,temperature):
      return np.asarray(param_trajectory)
 
 
-def runEvolutionSequence():
+##main wrapper function, uses hardcoded parameters given below to run an evolution simulation (from c++ files), and then analyse results in python3
+##results are then written into a pickle or npz file depending on parameters, and saved for later plotting/printing
+def runEvolutionSequence(runs=1):
 
-     ##change parameters here for data generation
-     
+     ##change parameters here for data generation, meanings for parameter flags can be found in the src/interface_simulation.cpp file at the end
+
      ##defaults well-suited for generating evolution of fixed system
-     default_parameters={'file_path' : 'bin/', 'N' : 2, 'P' : 100, 'K' : 400, 'B' : 20, 'X': .5, 'F': 5, 'A' : 1, 'D' : 1, 'J': 5, 'M': 1, 'Y' : .6875, 'T': 10, 'O' : 100, 'G' : 10} 
+     default_parameters={'file_path' : 'bin/', 'N' : 2, 'P' : 100, 'K' : 500, 'B' : 25, 'X': 0, 'F': 5, 'A' : 1, 'D' : runs, 'J': 5, 'M': 1, 'Y' : .6875, 'T': 25, 'O' : 0, 'G' : 0}
 
-     ##defaults for dynamic fitness landscape 
-     #default_parameters={'file_path' : 'bin/', 'N' : 2, 'P' : 100, 'K' : 600, 'B' : 150, 'X': 0, 'F': 1, 'A' : 2, 'D' : 1, 'J': 1, 'M': 1, 'Y' : .6875, 'T': 25, 'O' : 200, 'G' : 10} 
+     ##defaults for dynamic fitness landscape
+     #default_parameters={'file_path' : 'bin/', 'N' : 2, 'P' : 100, 'K' : 600, 'B' : 150, 'X': 0, 'F': 1, 'A' : 2, 'D' : 1, 'J': 1, 'M': 1, 'Y' : .6875, 'T': 25, 'O' : 200, 'G' : 10}
 
      ##helper method to stringify parameters
      def generateParameterString():
@@ -386,13 +388,14 @@ def collateByMode(mode,run_range, params):
 
      elif mode == 2:
           np.savez_compressed(file_base,collateNPZs(*params,runs=run_range))
-          
+
      else:
           print('unknown mode request, set parameter \'A\'')
 
 if __name__ == '__main__':
      try:
-          runEvolutionSequence()
+          ##by default run two simulations, otherwise use user input
+          runEvolutionSequence(2 if len(sys.argv)!=2 else int(sys.argv[1]))
      except Exception as e:
           print(e)
      else:

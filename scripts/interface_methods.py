@@ -43,8 +43,7 @@ class Interactions(object):
 def loadSelectionHistory(run):
      selections=[]
      for line in open(BASE_PATH.format('Selections',run)):
-          converted=[int(i) for i in line.split()]
-          selections.append(converted)
+          selections.append([int(i) for i in line.split()])
      return np.array(selections,np.uint16)
 
 def loadPIDHistory(run):
@@ -110,25 +109,34 @@ class EvoData(object):
                     print("Clearing out 10s")
                     del form[(10,0)]
 
-          
      def __repr__(self):
           return r'Data struct for S*={:.3f},T={:.3g},mu={:.2g},gamma={:.2g}'.format(self.S_star,self.T,self.mu,self.gamma)
-     
+
+##primary method to load pickle data
+##parameters:
+## S_star (float): critical interaction strength
+## t (float): temperature
+## mu (float): mutation rate
+## gamma (float): fitness punishment value
 def loadPickle(S_star,t,mu,gamma):
      with open('Y{}T{}Mu{}F{}.pkl'.format(S_star,*(float(i) for i in (t,mu,gamma))), 'rb') as f:
           return EvoData(S_star,t,mu,gamma,load(f))
 
-     
+##primary method to load numpyzip data
+##same parameters as above
 def loadNPZ(S_star,t,mu,gamma):
      return np.load('Y{}T{}Mu{}F{}.npz'.format(S_star,*(float(i) for i in (t,mu,gamma))), 'rb')['arr_0']
 
 #################
 ## RANDOM WALK ##
 #################
+
+##internal method for calculating Markov chain
 def RandomWalk(I_size=64,n_steps=1000,phi=0.5,S_star=0.6,analytic=False):
      s_hats=np.linspace(0,1,I_size+1)
      N_states=int(I_size*(1-S_star))+1
 
+     ##find normalised eigenvector for Markov matrix
      def __getSteadyStates(val):
           rows=[[1-phi,phi*(1-val[0])]+[0]*(N_states-2)]
           for i in range(1,N_states-1):
@@ -138,14 +146,17 @@ def RandomWalk(I_size=64,n_steps=1000,phi=0.5,S_star=0.6,analytic=False):
           eigval,eigvec=LA.eig(matrix)
           ve=eigvec.T[np.argmax(eigval)]
           return max(eigval),ve/sum(ve)
-     
+
+     ##return matrix calculation
      if analytic:
           analytic_states=__getSteadyStates(s_hats[-N_states:])[1]
           return sum(s_hats[-N_states:]*analytic_states)
-     
+
+     ##otherwise simulate directly
      states=np.array([1]+[0]*(N_states-1),dtype=float)
      progressive_states=[sum(s_hats[-N_states:]*states)]
 
+     ##simulate random walk on strength states
      def __updateStates(states,val):
           states_updating=states.copy()
           for i in range(states.shape[0]):
@@ -156,6 +167,7 @@ def RandomWalk(I_size=64,n_steps=1000,phi=0.5,S_star=0.6,analytic=False):
                     states_updating[i]+=states[i+1]*phi*val[i+1]
           return states_updating/sum(states_updating)
 
+     ##walk for n_steps, and then return state evolutions
      for _ in range(n_steps):
           states=__updateStates(states,s_hats[-N_states:])
           progressive_states.append(sum(s_hats[-N_states:]*states))
@@ -165,6 +177,7 @@ def RandomWalk(I_size=64,n_steps=1000,phi=0.5,S_star=0.6,analytic=False):
 ## PHASE SPACE##
 ################
 
+##all various methods for calculated steps 
 def HetTet(a,b):
      return 1/(1+2*b)*(2*b+2/(a+2)*(1+a*1/(a+2)))
      
@@ -197,7 +210,8 @@ def FourOne(a,seed=None):
           return seed2()
      else:
            return .5*seed1()+.5*seed2()
-     
+
+##internal method to calculate phase space coordinates for transitions     
 def calcTransitionParams(evo_strs,transitions,T,S_star):
      param_dict={}
 
@@ -225,8 +239,7 @@ def calcTransitionParams(evo_strs,transitions,T,S_star):
                     param_dict[(1,(16,0),(8,0))]=(S_star/evo_strs[(8,0)][(2,2)][-1])**T
                param_dict[(0,(16,0),(8,0))]=(evo_strs[(16,0)][(4,4)][0]/evo_strs[(16,0)][(3,4)][0])**T
                param_dict[(0,(16,0),(16,0))]=(evo_strs[(16,0)][(4,4)][-1]/evo_strs[(16,0)][(3,4)][-1])**T
-          
-          
+
      if (12,0) in evo_strs:
           if (4,1) in transitions[(12,0)]:
                if (2,0) in transitions[(4,1)]:
